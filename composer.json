@@ -1,0 +1,21 @@
+{
+    "name": "1xcrypto",
+    "version": "1.0.0",
+    "description": "Crypto exchange site",
+    "authors": [
+        {
+            "name": "Maximilien Comlan",
+            "email": "maximiliencomlan05@gmail.com",
+            "homepage": "https://themx.io",
+            "role": "Founder"
+        }
+    ],
+    "require": {
+        "phpmailer/phpmailer": "^6.1",
+        "psr/log": "^1.1",
+        "symfony/yaml": "^5.0",
+        "symfony/polyfill-mbstring": "^1.15",
+        "fedapay/fedapay-php": "^0.3.0",
+        "coinbase/coinbase": "^2.8"
+    }
+}

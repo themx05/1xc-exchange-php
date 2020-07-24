@@ -1,0 +1,12 @@
+delete from AccountVerificationCode where 1;
+delete from ExpectedPayments where 1;
+delete from Transactions where 1;
+delete from Tickets where 1;
+delete from RegistrationFeeTransaction where 1;
+delete from MerchantProfile where 1;
+delete from WalletHistory where 1;
+delete from WalletDeposit where 1;
+delete from WalletWithdrawalRequest where 1;
+delete from WalletWithdrawal where 1;
+delete from Wallets where 1;
+delete from Users where 1;
