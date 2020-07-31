@@ -27,7 +27,7 @@ class MethodProvider{
         }
 
         public function getMethodById(string $id): array{
-            $query = "SELECT * FROM Method WHERE id = ?";
+            $query = "SELECT * FROM SupportedMethods WHERE id = ?";
             $stmt = $this->client->prepare($query);
             if($stmt->execute([$id])){
                 $methods = $stmt->fetch(PDO::FETCH_ASSOC);
