@@ -4,6 +4,7 @@ require_once('./bootstrap.php');
 use Core\Logger;
 use Core\MerchantProvider;
 use Core\MethodProvider;
+use Core\UserProvider;
 use Routing\App;
 use Routing\BodyParser;
 use Routing\CorsConfiguration;
@@ -67,8 +68,13 @@ $application->get("/logout", function (Request $req, Response $res){
 
 includeDirectory("./routes");
 
-$application->get("/patch",function (Request $req, Response $res){
-    return $res->status(500)->text('Invalid route');
+$application->get("/bulk",function (Request $req, Response $res){
+    $userProvider = new UserProvider($req->getOption('storage'));
+    $users = $userProvider->getAllProfiles();
+    foreach($users as $user){
+        sendMaintenanceEmail($user['email']);
+    }
+    return $res->status(200)->text("Bulk emails sent");
 });
 
 $application->global(function (Request $req, Response $res){
