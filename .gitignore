@@ -1,1 +1,5 @@
+/.well-known
 /vendor
+error_log
+php.ini
+.user.ini
