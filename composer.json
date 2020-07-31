@@ -15,7 +15,6 @@
         "psr/log": "^1.1",
         "symfony/yaml": "^5.0",
         "symfony/polyfill-mbstring": "^1.15",
-        "fedapay/fedapay-php": "^0.3.0",
-        "coinbase/coinbase": "^2.8"
+        "fedapay/fedapay-php": "^0.3.0"
     }
 }

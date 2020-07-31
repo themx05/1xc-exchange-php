@@ -41,31 +41,28 @@ $methodRouter->post("/", function(Request $req, Response $res) {
     $method = $req->getOption('body');
     $methodProvider = new MethodProvider($req->getOption('storage'));
 
-    $hash = $methodProvider->storeMethod($method);
-
-    if(!empty($hash)){
-        $res->json(['success' => true]);
+    if($req->getOption('isAdmin')){
+        $hash = $methodProvider->storeMethod(json_decode(json_encode($method), true));
+        if(!empty($hash)){
+            return $res->json(['success' => true]);
+        }
     }
-    else{
-        $res->json(['success' => false]);
-    }
+    $res->json(['success' => false]);
 });
 
 $methodRouter->patch("/:id",function(Request $req, Response $res){
     $mid = $req->getParam('id');
-    $method = $req->getOption('body');
+    $method = json_decode(json_encode($req->getOption('body')),true);
+    $method['id'] = $mid;
     $client = $req->getOption('storage');
     if($req->getOption('isAdmin')){
         if($client instanceof PDO){
             $methodProvider = new MethodProvider($client);
             $client->beginTransaction();
-            $deletion_done = $methodProvider->deleteMethod($mid);
-            if($deletion_done){
-                $hash = $methodProvider->storeMethod($method, $mid);
-                if(!empty($hash)){
-                    $client->commit();
-                    return $res->json(['success' => true]);
-                }
+            $done = $methodProvider->updateMethod($method);
+            if($done){
+                $client->commit();
+                return $res->json(['success' => true]);
             }
             $client->rollBack();
         }

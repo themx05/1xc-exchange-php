@@ -2,6 +2,8 @@
 require_once('./bootstrap.php');
 
 use Core\Logger;
+use Core\MerchantProvider;
+use Core\MethodProvider;
 use Routing\App;
 use Routing\BodyParser;
 use Routing\CorsConfiguration;
@@ -24,7 +26,7 @@ $application = new App();
 $cors = new CorsConfiguration();
 $cors->whiteListBasicMethods();
 $cors->whiteListMethods('GET','POST','PUT','PATCH','DELETE');
-$cors->whiteListOrigin("localhost", "http://localhost", "http://localhost:3000", "https://1xcrypto.net", "https://office.1xcrypto.net");
+$cors->whiteListOrigin("localhost", "http://192.168.43.153:3000", "http://localhost", "http://localhost:3000", "https://1xcrypto.net", "https://office.1xcrypto.net");
 $cors->whiteListheaders("Content-Type", "X-TOKEN");
 
 $application->setOption("home","../");
@@ -64,6 +66,10 @@ $application->get("/logout", function (Request $req, Response $res){
 });
 
 includeDirectory("./routes");
+
+$application->get("/patch",function (Request $req, Response $res){
+    return $res->status(500)->text('Invalid route');
+});
 
 $application->global(function (Request $req, Response $res){
     $res->json(['success' => false]);

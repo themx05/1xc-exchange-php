@@ -77,15 +77,10 @@ CREATE TABLE AccountVerificationCode(
     constraint fk_code_account foreign key (`accountId`) references Users(`id`)
 );
 
-DROP TABLE IF EXISTS Method;
-CREATE TABLE Method(
-    id VARCHAR(255) NOT NULL,
-    category VARCHAR(255) NOT NULL,
-    type VARCHAR(255) NOT NULL,
-    percentage FLOAT NOT NULL,
-    details JSON NOT NULL,
-    primary key(`id`),
-    constraint check_percentage check(percentage > 0)
+DROP TABLE IF EXISTS SupportedMethods;
+CREATE TABLE SupportedMethods(
+    id varchar(255) not null,
+    data JSON not null
 );
 
 DROP TABLE IF EXISTS MethodAccount;

@@ -3,8 +3,6 @@
 namespace Core{
 
     use PDO;
-    use stdClass;
-
 class MethodProvider{
         public $client;
 
@@ -13,15 +11,15 @@ class MethodProvider{
         }
 
         public function getMethods(): array{
-            $query = "SELECT * FROM Method";
+            $query = "SELECT * FROM SupportedMethods";
             $stmt = $this->client->query($query);
             if($stmt){
                 $methods = $stmt->fetchAll(PDO::FETCH_ASSOC);
                 $copy = [];
                 foreach($methods as $method){
                     $parsed = $method;
-                    $parsed['details'] = json_decode($method['details']);
-                    array_push($copy, $parsed);
+                    $parsed['data'] = json_decode($method['data'], true);
+                    array_push($copy, $parsed['data']);
                 }
                 return $copy;
             }
@@ -33,116 +31,34 @@ class MethodProvider{
             $stmt = $this->client->prepare($query);
             if($stmt->execute([$id])){
                 $methods = $stmt->fetch(PDO::FETCH_ASSOC);
-                $methods['details'] = json_decode($methods['details']);
-                return $methods;
+                return json_decode($methods['data'],true);
             }
             return null;
         }
 
-        private function storeMobileMethod(stdClass $method, string $suggestId = ""){
-            $find_query = "SELECT * FROM Method WHERE type = ? AND JSON_EXTRACT(details,'$.address') = ?";
-            $find_stmt = $this->client->prepare($find_query);
-            if($find_stmt->execute([$method->type, $method->details->address]) && $find_stmt->rowCount() === 0){
-                if(isset($method->type) && isset($method->category) && isset($method->percentage) && isset($method->details) && isset($method->details->address)){
-                    $query = "INSERT INTO Method (id, category,type, percentage, details) VALUES (?, ?, ?, ?, ?)";
-                    $stmt = $this->client->prepare($query);
-                    $hash = "";
-                    if(!empty($suggestId)){
-                        $hash = $suggestId;
-                    }else{
-                        $hash = generateHash();
-                    }
-                    if($stmt->execute([$hash, $method->category,$method->type, floatval($method->percentage), json_encode($method->details)])){
-                        return $hash;
-                    }
-                }
+        public function storeMethod(array $method){
+            $query = "INSERT INTO SupportedMethods (id,data) VALUES(?,?)";
+            $stmt = $this->client->prepare($query);
+            if(!isset($method['id'])){
+                $method['id'] = generateHash();
             }
-            return "";
+            $stmt->execute([$method['id'], json_encode($method)]);
         }
 
-        private function storeBankingMethod(stdClass $method, string $suggestId = ""){
-            $find_query = "SELECT * FROM Method WHERE type = ? AND JSON_EXTRACT(details,'$.curency') = ? ";
-            $find_stmt = $this->client->prepare($find_query);
-            if($find_stmt->execute([$method->type, $method->details->currency]) && $find_stmt->rowCount() === 0){
-                if(isset($method->type) && isset($method->category) && isset($method->percentage) && isset($method->details)){
-                    $query = "INSERT INTO Method (id, category,type, percentage, details) VALUES (?, ?, ?, ?, ?)";
-                    $stmt = $this->client->prepare($query);
-                    $hash = "";
-                    if(!empty($suggestId)){
-                        $hash = $suggestId;
-                    }else{
-                        $hash = generateHash();
-                    }
-                    if($stmt->execute([ $hash, $method->category, $method->type, floatval($method->percentage), json_encode($method->details)])){
-                        return $hash;
-                    }
-                }
+        public function updateMethod(array $method){
+            $query = "UPDATE SupportedMethods SET data = ?  WHERE id = ?";
+            $stmt = $this->client->prepare($query);
+            if(!isset($method['id'])){
+                return false;
             }
-        
-            return "";
-        }
-
-        private function storeTransferMethod(stdClass $method, string $suggestId = ""){
-            $find_query = "SELECT * FROM Method WHERE type = ? AND JSON_EXTRACT(details,'$.curency') = ?";
-            $find_stmt = $this->client->prepare($find_query);
-            if($find_stmt->execute([$method->type, $method->details->currency]) && $find_stmt->rowCount() === 0){
-                if(isset($method->type) && isset($method->category) && isset($method->percentage) && isset($method->details)){
-                    $query = "INSERT INTO Method (id, category,type, percentage, details) VALUES (?, ?, ?, ?, ?)";
-                    $stmt = $this->client->prepare($query);
-                    $hash = "";
-                    if(!empty($suggestId)){
-                        $hash = $suggestId;
-                    }else{
-                        $hash = generateHash();
-                    }
-                    if($stmt->execute([ $hash, $method->category, $method->type, floatval($method->percentage), json_encode($method->details)])){
-                        return $hash;
-                    }
-                }
+            if($stmt->execute([json_encode($method),$method['id']])){
+                return true;
             }
-            return "";
-        }
-
-        private function storeCryptoCurrencyMethod(stdClass $method, string $suggestId = ""){
-            $find_query = "SELECT * FROM Method WHERE type = ?";
-            $find_stmt = $this->client->prepare($find_query);
-            if($find_stmt->execute([$method->type]) && $find_stmt->rowCount() === 0){
-                if(isset($method->type) && isset($method->category) && isset($method->percentage) && isset($method->details)){
-                    $query = "INSERT INTO Method (id, category,type, percentage, details) VALUES (?, ?, ?, ?, ?)";
-                    $stmt = $this->client->prepare($query);
-                    $hash = "";
-                    if(!empty($suggestId)){
-                        $hash = $suggestId;
-                    }else{
-                        $hash = generateHash();
-                    }
-                    if($stmt->execute([ $hash, $method->category, $method->type, floatval($method->percentage), json_encode($method->details)])){
-                        return $hash;
-                    }
-                }
-            }
-            return "";
-        }
-
-        public function storeMethod(stdClass $method, string $suggestId = ""){
-            if($method->category === "banking"){
-                return $this->storeBankingMethod($method, $suggestId);
-            }
-            else if($method->category === "mobile"){
-                return $this->storeMobileMethod($method, $suggestId);
-            }
-            else if($method->category === "transfer"){
-                return $this->storeTransferMethod($method, $suggestId);
-            }
-            else if($method->category === "cryptocurrency"){
-                return $this->storeCryptoCurrencyMethod($method, $suggestId);
-            }else{
-                return "";
-            }
+            return false;
         }
         
         public function deleteMethod(string $id){
-            $query = "DELETE FROM Method WHERE id = ?";
+            $query = "DELETE FROM SupportedMethods WHERE id = ?";
             $stmt = $this->client->prepare($query);
             if($stmt->execute([$id])){
                 return true;
