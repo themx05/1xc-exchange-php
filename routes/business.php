@@ -222,7 +222,7 @@ $singleBusiness->get("/approve", function(Request $req, Response $res){
 
 $singleBusiness->patch("/documents/:docName/verified/:enable", function(Request $req, Response $res){
     $client = $req->getOption('storage');
-    $enable = boolval(intval($req->getOption('enable')));
+    $enable = intval($req->getOption('enable')) === 1;
     if($client instanceof PDO && $req->getOption('isAdmin')){
         $merchantProvider = new MerchantProvider($client);
         $business = $req->getParam('business');
