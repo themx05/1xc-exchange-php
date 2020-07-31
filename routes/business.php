@@ -240,7 +240,7 @@ $singleBusiness->patch("/documents/:docName/verified/:enable", function(Request 
         $done = $merchantProvider->updateProfile($profile['id'], $profile);
         if($done){
             $client->commit();
-            return $res->json(['success' => true]);
+            return $res->json(['success' => true, 'verified'=>$enable]);
         }
         $client->rollBack();
     }
