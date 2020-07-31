@@ -45,6 +45,20 @@ class MerchantProvider{
         return "";
     }
 
+    public function areDocumentsVerified(string $businessId){
+        $business = $this->getProfileById($businessId);
+        if(isset($business)){
+            $docs = $business['documents'];
+            foreach($docs as $doc){
+                if(!isset($doc['verified']) || $doc['verified'] == false){
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
     public function getProfiles(){
         $query = "SELECT * FROM MerchantProfile";
         $stmt = $this->client->prepare($query);
