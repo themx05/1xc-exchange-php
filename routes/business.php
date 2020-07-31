@@ -209,6 +209,33 @@ $singleBusiness->get("/approve", function(Request $req, Response $res){
     return $res->json(['success' => false]);
 });
 
+$singleBusiness->patch("/documents/:docName/verified/:enable", function(Request $req, Response $res){
+    $client = $req->getOption('storage');
+    $enable = boolval($req->getOption('enable'));
+    if($client instanceof PDO && $req->getOption('isAdmin')){
+        $merchantProvider = new MerchantProvider($client);
+        $business = $req->getParam('business');
+        $docName = $req->getParam('docName');
+
+        $profile = $merchantProvider->getProfileById($business);
+        
+        foreach($profile['documents'] as $key => $doc){
+            if($doc['name'] == $docName){
+                $doc['verified'] = $enable;
+            }
+            $profile['documents'][$key] = $doc;
+        }
+        $client->beginTransaction();
+        $done = $merchantProvider->updateProfile($profile['id'], $profile);
+        if($done){
+            $client->commit();
+            return $res->json(['success' => true]);
+        }
+        $client->rollBack();
+    }
+    return $res->json(['success' => false]);
+});
+
 $singleBusiness->delete("/", function(Request $req, Response $res){
     $merchantProvider = new MerchantProvider($req->getOption('storage'));
     $business = $req->getParam('business');

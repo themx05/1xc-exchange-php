@@ -272,7 +272,7 @@ use Closure;
 
         private function parsePattern(string $pattern): string{
             $pattern = preg_replace("/\//","\/",$pattern);
-            $pattern = preg_replace("/:([a-zA-Z0-9]*)/", "(?<$1>[a-zA-Z0-9\-]*)",$pattern);
+            $pattern = preg_replace("/:([a-zA-Z0-9]*)/", "(?<$1>[a-zA-Z0-9\-\.]*)",$pattern);
             return $pattern;
         }
 
