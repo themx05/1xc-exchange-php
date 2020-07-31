@@ -34,6 +34,14 @@ $registrationRouter->post("/",function (Request $req, Response $res){
     }
 
     $userProvider = new UserProvider($req->getOption('storage'));
+
+    $data->lastName = ucfirst(strtolower($data->lastName));
+    $data->firstName = ucfirst(strtolower($data->firstName));
+
+    if($userProvider->getProfileByEmail($data->email) !== null){
+        return $res->json(['success' => false, 'error' => 'possible_duplicate_data', 'message'=>'A user already exists with the same email address.']);
+    }
+
     $id = $userProvider->createProfile($data);
     if(!empty($id)){
         return $res->json([

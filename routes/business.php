@@ -38,6 +38,10 @@ $businessRouter->post("/register", function(Request $req, Response $res){
         return $res->json(['success' => false, 'message' => 'merchant business name is required']);
     }
 
+    if($merchantProvider->getProfileByName($_POST['name']) !== null){
+        return $res->json(['success' => false, 'message' => 'A business profile with the same name exists']);
+    }
+
     if(!isset($_POST['country'])){
         return $res->json(['success' => false, 'message' => 'merchant country is required']);
     }
@@ -50,8 +54,16 @@ $businessRouter->post("/register", function(Request $req, Response $res){
         return $res->json(['success' => false, 'message' => 'merchant phone is required']);
     }
 
+    if($merchantProvider->getProfileByPhone($_POST['phone']) !==null){
+        return $res->json(['success' => false, 'message' => 'A business profile with the same phone number exists']);
+    }
+
     if(!isset($_POST['email'])){
         return $res->json(['success' => false, 'message' => 'merchant email is required']);
+    }
+
+    if($merchantProvider->getProfileByEmail($_POST['email']) !== null){
+        return $res->json(['success' => false, 'message' => 'A business profile with the same email exists']);
     }
 
     if(!isset($_FILES['cni']) || empty($_FILES['cni']['tmp_name'])){
@@ -67,7 +79,7 @@ $businessRouter->post("/register", function(Request $req, Response $res){
         'documents' => []
     ];
 
-    $allowed_extensions = array("jpeg","jpg","png", "pdf","docx","doc");
+    $allowed_extensions = array("jpeg","jpg","png", "pdf","doc");
 
     $cni_data = array();
     $rc_data = array();
@@ -138,7 +150,6 @@ $businessRouter->post("/register", function(Request $req, Response $res){
         }
     }
 
-    $merchantProvider = new MerchantProvider($req->getOption('storage'));
     $businessId = $merchantProvider->createBusinessProfile($user['id'], $business);
     if(!empty($businessId)){
         return $res->json(['success' => true, 'businessId' => $businessId]);
@@ -211,7 +222,7 @@ $singleBusiness->get("/approve", function(Request $req, Response $res){
 
 $singleBusiness->patch("/documents/:docName/verified/:enable", function(Request $req, Response $res){
     $client = $req->getOption('storage');
-    $enable = boolval($req->getOption('enable'));
+    $enable = boolval(intval($req->getOption('enable')));
     if($client instanceof PDO && $req->getOption('isAdmin')){
         $merchantProvider = new MerchantProvider($client);
         $business = $req->getParam('business');

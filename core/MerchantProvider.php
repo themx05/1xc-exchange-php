@@ -87,6 +87,39 @@ class MerchantProvider{
         return null;
     }
 
+    public function getProfileByName(string $name){
+        $query = "SELECT * FROM MerchantProfile WHERE JSON_EXTRACT(data,'$.name') = ?";
+        $stmt = $this->client->prepare($query);
+        if($stmt->execute([$name]) && $stmt->rowCount() > 0){
+            $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+            return json_decode($profile['data'], true);
+        }
+
+        return null;
+    }
+
+    public function getProfileByEmail(string $email){
+        $query = "SELECT * FROM MerchantProfile WHERE JSON_EXTRACT(data,'$.email') = ?";
+        $stmt = $this->client->prepare($query);
+        if($stmt->execute([$email]) && $stmt->rowCount() > 0){
+            $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+            return json_decode($profile['data'], true);
+        }
+
+        return null;
+    }
+
+    public function getProfileByPhone(string $phone){
+        $query = "SELECT * FROM MerchantProfile WHERE JSON_EXTRACT(data,'$.phone') = ?";
+        $stmt = $this->client->prepare($query);
+        if($stmt->execute([$phone]) && $stmt->rowCount() > 0){
+            $profile = $stmt->fetch(PDO::FETCH_ASSOC);
+            return json_decode($profile['data'], true);
+        }
+
+        return null;
+    }
+
     public function getBusinessProfileByUser(string $user){
         $query = "SELECT * FROM MerchantProfile WHERE JSON_EXTRACT(data,'$.userId') = ?";
         $stmt = $this->client->prepare($query);
