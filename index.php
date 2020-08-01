@@ -90,6 +90,9 @@ $application->get("/patch",function (Request $req, Response $res){
                     else if(isset($initial_source['details']['percentage'])){
                         $copy['details']['percentage'] = $initial_source['percentage'];
                     }
+                    else {
+                        $copy['details']['percentage'] = $method['details']['percentage'];
+                    }
                     $copy['details']['pattern'] = $method['pattern'];
 
                     if(isset($copy['addedAt'])){
