@@ -84,15 +84,7 @@ $application->get("/patch",function (Request $req, Response $res){
                     $initial_source = $ticket['source'];
                     $copy = $method;
                     $copy['details']= $initial_source['details'];
-                    if(isset($initial_source['percentage'])){
-                        $copy['details']['percentage'] = $initial_source['percentage'];
-                    }
-                    else if(isset($initial_source['details']['percentage'])){
-                        $copy['details']['percentage'] = $initial_source['percentage'];
-                    }
-                    else {
-                        $copy['details']['percentage'] = $method['details']['percentage'];
-                    }
+                    $copy['details']['percentage'] = $method['details']['percentage'];
                     $copy['details']['pattern'] = $method['pattern'];
 
                     if(isset($copy['addedAt'])){
