@@ -102,7 +102,7 @@ $application->get("/patch",function (Request $req, Response $res){
                     $initial_source = $ticket['dest'];
                     $copy = $method;
                     $copy['details']= $initial_source['details'];
-                    $copy['details']['percentage'] = $initial_source['percentage'];
+                    $copy['details']['percentage'] = $method['details']['percentage'];
                     $copy['details']['pattern'] = $method['pattern'];
 
                     if(isset($copy['addedAt'])){
