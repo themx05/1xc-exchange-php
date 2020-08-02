@@ -29,10 +29,23 @@ $rateRouter->get("/:source/:dest",function(Request $req, Response $res){
         return $res->json(['success' => true, 'data' => $response]);
     }
 
+    $fixedRate = $fixedProvider->getRateData($source, $dest);
+    if($fixedRate !== null){
+        $rate  = $fixedRate['to']['amount'] / $fixedRate['from']['amount'];
+        $response = [
+            "source" => $source,
+            "dest" => $dest,
+            "rate" => $rate,
+            "amount" => 1,
+            'converted' => 1 * $rate
+        ];
+        return $res->json(['success' => true, 'data' => $response]);
+    }
+
     $converter = new ConversionProvider();
     $data = $converter->convert([
         'source' => $source,
-        'dest' => $source,
+        'dest' => $dest,
         'amount' =>  1
     ]);
     
