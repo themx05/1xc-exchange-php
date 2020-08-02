@@ -1,5 +1,8 @@
 <?php
 
+/**
+ * Access currently disabled for this route.
+ */
 use Core\FixedRatesProvider;
 use Routing\Request;
 use Routing\Response;
@@ -8,6 +11,11 @@ use Routing\Router;
 $fixedRouter = new Router();
 
 $fixedRouter->global(function(Request $req, Response $res, Closure $next){
+    /**
+     * Disable access
+     */
+    return $res->json(['success' => false]);
+    
     if($req->getOption('isAdmin')){
         return $next();
     }

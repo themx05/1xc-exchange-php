@@ -1,5 +1,8 @@
 <?php
 
+/**
+ * Currently unused. Will help in future to fix some exchange rates.
+ */
 namespace Core{
 
 use PDO;
