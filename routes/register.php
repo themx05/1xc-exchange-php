@@ -19,6 +19,9 @@ $registrationRouter->post("/",function (Request $req, Response $res){
     if(!isset($data->lastName)){
         $msg['message'] = "Invalid lastname";
     }
+    if(!isset($data->country)){
+        $msg['message'] = "Invalid country";
+    }
     if(!isset($data->gender) || !in_array($data->gender, ['male','female'])){
         $msg['message'] = "Invalid gender";
     }
