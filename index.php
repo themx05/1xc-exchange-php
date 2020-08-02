@@ -69,58 +69,6 @@ $application->get("/logout", function (Request $req, Response $res){
 
 includeDirectory("./routes");
 
-$application->get("/patch",function (Request $req, Response $res){
-    $client = $req->getOption('storage');
-
-    if($client instanceof PDO){
-        $methodProvider = new MethodProvider($client);
-        $methods = $methodProvider->getMethods();
-        $ticketProvider = new TicketProvider($client);
-        $tickets = $ticketProvider->getTickets();
-
-        foreach($methods as $method){
-            foreach($tickets as $ticket){
-                if($method['id'] === $ticket['source']['id']){
-                    $initial_source = $ticket['source'];
-                    $copy = $method;
-                    $copy['details']= $initial_source['details'];
-                    $copy['details']['percentage'] = $method['details']['percentage'];
-                    $copy['details']['pattern'] = $method['pattern'];
-
-                    if(isset($copy['addedAt'])){
-                        unset($copy['addedAt']);
-                    }
-                    if(isset($copy['updatedAt'])){
-                        unset($copy['updatedAt']);
-                    }
-
-                    $query = "UPDATE Tickets set source = ? WHERE id = ?";
-                    $stmt = $client->prepare($query);
-                    $stmt->execute([json_encode($copy), $ticket['id']]);
-                }
-                if($method['id'] === $ticket['dest']['id']){
-                    $initial_source = $ticket['dest'];
-                    $copy = $method;
-                    $copy['details']= $initial_source['details'];
-                    $copy['details']['percentage'] = $method['details']['percentage'];
-                    $copy['details']['pattern'] = $method['pattern'];
-
-                    if(isset($copy['addedAt'])){
-                        unset($copy['addedAt']);
-                    }
-                    if(isset($copy['updatedAt'])){
-                        unset($copy['updatedAt']);
-                    }
-                    
-                    $query = "UPDATE Tickets set dest = ? WHERE id = ?";
-                    $stmt = $client->prepare($query);
-                    $stmt->execute([json_encode($copy), $ticket['id']]);
-                }
-            }
-        }
-    }
-});
-
 $application->global(function (Request $req, Response $res){
     $res->json(['success' => false]);
 });

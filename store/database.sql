@@ -83,6 +83,13 @@ CREATE TABLE SupportedMethods(
     data JSON not null
 );
 
+DROP TABLE IF EXISTS FixedRates;
+CREATE TABLE FixedRates(
+    id VARCHAR(255) NOT NULL,
+    data JSON not null,
+    primary key(`id`)
+);
+
 DROP TABLE IF EXISTS MethodAccount;
 CREATE TABLE MethodAccount(
     id VARCHAR(255) NOT NULL,
@@ -147,7 +154,6 @@ CREATE TABLE Admins(
 );
 
 DROP TABLE IF EXISTS Transactions;
-
 CREATE TABLE Transactions(
     id varchar(255) not null,
     ticketId varchar(255) NOT NULL,

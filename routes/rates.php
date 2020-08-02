@@ -1,26 +1,51 @@
 <?php
 
+use Core\FixedRatesProvider;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
 
 $rateRouter = new Router();
 
+/**
+ * Added Manually Fixed Rates support to prevent market losses. 
+ */
+
 $rateRouter->get("/:source/:dest",function(Request $req, Response $res){
-    $converter = new ConversionProvider();
-    if($req->getParam("source") === $req->getParam("dest")){
+
+    $fixedProvider = new FixedRatesProvider($req->getOption('storage'));
+
+    $source = $req->getParam('source');
+    $dest = $req->getParam('dest');
+
+    if($source === $dest){
         $response = [
-            "source" => $req->getParam('source'),
-            "dest" => $req->getParam('dest'),
+            "source" => $source,
+            "dest" => $dest,
             "rate" => 1,
             "amount" => 1,
             'converted' => 1 
         ];
         return $res->json(['success' => true, 'data' => $response]);
     }
+
+    $fixedRate = $fixedProvider->getRateData($source, $dest);
+    if($fixedRate !== null){
+        $rate  = $fixedRate['to']['amount'] / $fixedRate['from']['amount'];
+        $response = [
+            "source" => $source,
+            "dest" => $dest,
+            "rate" => $rate,
+            "amount" => 1,
+            'converted' => 1 * $rate
+        ];
+        return $res->json(['success' => true, 'data' => $response]);
+    }
+
+    $converter = new ConversionProvider();
     $data = $converter->convert([
-        'source' => $req->getParam('source'),
-        'dest' => $req->getParam("dest"),
+        'source' => $source,
+        'dest' => $source,
         'amount' =>  1
     ]);
     
@@ -32,11 +57,8 @@ $rateRouter->get("/:source/:dest",function(Request $req, Response $res){
             ]);
         }
     }
-    $res->json([
-        'success' => false
-    ]);
+    return $res->json(['success' => false]);
 });
-
 
 global $application;
 $application->router("/rates", $rateRouter);
