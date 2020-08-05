@@ -443,7 +443,7 @@ class PaymentGateway {
         $global = doubleval($ticket->amount * $ticket->rate);
         $dest = $ticket->dest;
 
-        $gain = doubleval($dest->percentage);
+        $gain = doubleval($dest->details->percentage);
         $emitterBonus = doubleval($dest->details->emitterFee);
 
         return (($global * $gain/100) * $emitterBonus/100);
@@ -455,7 +455,7 @@ class PaymentGateway {
 
         $staticFee = doubleval($dest->details->staticFee);
         $dynamicFee = doubleval($dest->details->dynamicFee);
-        $gain = doubleval($dest->percentage);
+        $gain = doubleval($dest->details->percentage);
 
         $fees = $staticFee + ($global * $gain/100) + ($global * $dynamicFee/100);
     }
@@ -469,7 +469,7 @@ class PaymentGateway {
 
         $staticFee = doubleval($dest->details->staticFee);
         $dynamicFee = doubleval($dest->details->dynamicFee);
-        $gain = doubleval($dest->percentage);
+        $gain = doubleval($dest->details->percentage);
 
         $fees = $staticFee + ($global * $gain/100) + ($global * $dynamicFee/100);
 

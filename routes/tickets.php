@@ -218,6 +218,7 @@ $singleTicket->get("/abort", function(Request $req, Response $res){
 
 $singleTicket->get("/autopay", function(Request $req, Response $res){
     global $logger;
+    $logger->info("Launching Automic payment");
     $ticketProvider = new TicketProvider($req->getOption('storage'));
     $ticketId = $req->getParam('ticket');
     $logger->info("Automatic payment launched for ticket ".$ticketId);
@@ -241,7 +242,7 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
             $gateway->setCountry($ticket['dest']['details']['country']);
         }
 
-        $logger->info("Launching processing");
+        $logger->info("Launching payout.");
         $payment_result = $gateway->process();
 
         if(isset($payment_result)){
@@ -249,7 +250,7 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
             $pdo = $req->getOption('storage');
             if($pdo instanceof PDO){
                 $pdo->beginTransaction();
-                $logger->info("Storing transaction");
+                $logger->info("Saving transaction");
                 $transactionProvider = new TransactionProvider($pdo);
                 $transactionId = $transactionProvider->createOutTicketTransaction($ticket, $payment_result);
                 if(intval($ticket['enableCommission']) === 1){
