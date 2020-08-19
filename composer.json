@@ -1,7 +1,7 @@
 {
-    "name": "1xcrypto",
+    "name": "1xc/api",
     "version": "1.0.0",
-    "description": "Crypto exchange site",
+    "description": "1xc base REST API",
     "authors": [
         {
             "name": "Maximilien Comlan",
@@ -15,6 +15,7 @@
         "psr/log": "^1.1",
         "symfony/yaml": "^5.0",
         "symfony/polyfill-mbstring": "^1.15",
-        "fedapay/fedapay-php": "^0.3.0"
+        "fedapay/fedapay-php": "^0.3.0",
+        "firebase/php-jwt": "^5.2"
     }
 }

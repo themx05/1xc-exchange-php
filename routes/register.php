@@ -9,31 +9,29 @@ $registrationRouter = new Router();
 
 $registrationRouter->post("/",function (Request $req, Response $res){
     $data = $req->getOption('body');
-    $msg = [
-        'success' => false,
-    ];
+    $msg = [];
 
     if(!isset($data->firstName)){
-        $msg['message'] = "Invalid firstname";
+        $msg['firstName'] = "Invalid firstname";
     }
     if(!isset($data->lastName)){
-        $msg['message'] = "Invalid lastname";
+        $msg['lastName'] = "Invalid lastname";
     }
     if(!isset($data->country)){
-        $msg['message'] = "Invalid country";
+        $msg['country'] = "Invalid country";
     }
     if(!isset($data->gender) || !in_array($data->gender, ['male','female'])){
-        $msg['message'] = "Invalid gender";
+        $msg['gender'] = "Invalid gender";
     }
     if(!isset($data->email)){
-        $msg['message'] = "Invalid email";
+        $msg['email'] = "Invalid email";
     }
     if(!isset($data->password)){
-        $msg['message'] = "Invalid password";
+        $msg['password'] = "Invalid password";
     }
 
-    if(isset($msg['message']) && !empty($msg['message'])){
-        return $res->status(401)->json($msg);
+    if(count($msg) > 0){
+        return $res->status(401)->json(buildErrors($msg));
     }
 
     $userProvider = new UserProvider($req->getOption('storage'));
@@ -42,28 +40,27 @@ $registrationRouter->post("/",function (Request $req, Response $res){
     $data->firstName = ucfirst(strtolower($data->firstName));
 
     if($userProvider->getProfileByEmail($data->email) !== null){
-        return $res->json(['success' => false, 'error' => 'possible_duplicate_data', 'message'=>'A user already exists with the same email address.']);
+        return $res->json(buildErrors(['email' => 'A user already exists with the same email address.']));
     }
 
     $id = $userProvider->createProfile($data);
     if(!empty($id)){
-        return $res->json([
-            'success'=> true,
+        return $res->json(buildSuccess([
             'message' => 'user created',
             'id' => $id,
             'requireVerification' => true
-        ]);
+        ]));
     }
-    $res->json(['success'=> false]);
+    $res->json(buildErrors());
 });
 
 $registrationRouter->get("/:activationCode", function(Request $req, Response $res){
     $activationCode = $req->getParam('activationCode');
     $userProvider = new UserProvider($req->getOption('storage'));
     if($userProvider->activateProfile($activationCode)){
-        return $res->json(['success'=>true]);
+        return $res->json(buildSuccess(true));
     }
-    return $res->json(['success'=>false]);
+    return $res->json(buildErrors());
 });
 
 global $application;

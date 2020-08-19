@@ -101,3 +101,33 @@ function fullCryptoName(string $crypto){
     }
     return "";
 }
+
+function buildSuccess($data): array{
+
+    $ret = array(
+        'success' => true
+    );
+
+    if(isset($data)){
+        $ret['data'] = $data;
+    }
+
+    return $ret;
+}
+
+function buildErrors(array $errors = [], array $additional = []){
+    $ret = array(
+        'success' => false,
+    );
+
+    if(!empty($errors)){
+        $ret['errors'] = $errors;
+    }
+
+    if(!empty($additional)){
+        $ret = array_merge($ret, $additional);
+    }
+    
+    return $ret;
+}
+

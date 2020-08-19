@@ -11,13 +11,10 @@ $methodRouter->get("/",function (Request $req, Response $res){
     $methodProvider = new MethodProvider($req->getOption('storage'));
     $methods = $methodProvider->getMethods();
     if(isset($methods)){
-        $res->json([
-            'success' => true,
-            'methods' => $methods
-        ]);
+        $res->json(buildSuccess($methods));
         return;
     }
-    $res->json(['success' => false]);
+    $res->json(buildErrors());
 
 });
 
@@ -27,13 +24,10 @@ $methodRouter->get("/:method",function (Request $req, Response $res){
     $methodProvider = new MethodProvider($req->getOption('storage'));
     $method = $methodProvider->getMethodById($methodId);
     if(isset($method)){
-        $res->json([
-            'success' => true,
-            'method' => $method
-        ]);
+        $res->json(buildSuccess($method));
         return;
     }
-    $res->json(['success' => false]);
+    $res->json(buildErrors());
 });
 
 
@@ -44,7 +38,7 @@ $methodRouter->post("/", function(Request $req, Response $res) {
     if($req->getOption('isAdmin')){
         $hash = $methodProvider->storeMethod(json_decode(json_encode($method), true));
         if(!empty($hash)){
-            return $res->json(['success' => true]);
+            return $res->json(buildSuccess($hash));
         }
     }
     $res->json(['success' => false]);
@@ -62,12 +56,12 @@ $methodRouter->patch("/:id",function(Request $req, Response $res){
             $done = $methodProvider->updateMethod($method);
             if($done){
                 $client->commit();
-                return $res->json(['success' => true]);
+                return $res->json(buildSuccess($done));
             }
             $client->rollBack();
         }
     }
-    $res->json(['success' => false]);
+    $res->json(buildErrors());
 });
 
 $methodRouter->delete("/:id",function (Request $req, Response $res){
@@ -75,13 +69,12 @@ $methodRouter->delete("/:id",function (Request $req, Response $res){
     $methodProvider = new MethodProvider($req->getOption('storage'));
     $hash = $methodProvider->deleteMethod($method);
     if(!empty($hash)){
-        $res->json(['success' => true]);
+        $res->json(buildSuccess($hash));
     }
     else{
-        $res->json(['success' => false]);
+        $res->json(buildErrors());
     }
 });
-
 
 global $application;
 $application->router("/methods",$methodRouter);

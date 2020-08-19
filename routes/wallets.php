@@ -20,7 +20,7 @@ $walletRouter->get("/confirm/:method/:userId", function(Request $req, Response $
     $userId = $req->getParam('userId');
 
     if($method !=="mobile"){
-        return $res->json(['success' => false]);
+        return $res->json(buildErrors());
     }
     
     $client = $req->getOption('storage');
@@ -31,9 +31,9 @@ $walletRouter->get("/confirm/:method/:userId", function(Request $req, Response $
     $fees = $systemProps->getBusinessWalletFee();
     $user = $userProvider->getProfileById($userId);
     if($client instanceof PDO && isset($user) && intval($user['isMerchant']) === 1){
-        $logger->info("Well, user is a merchant");
+        $logger->info("Well, user is a partner");
         if(isset($fees)){
-            $logger->info("Registration fees are avaiable. Fees: ".json_encode($fees));
+            $logger->info("Registration fees are available. Fees: ".json_encode($fees));
             if($fees->amount > 0){
                 $feda_account = $methodAccountProvider->getFedaPay();
                 FedaPay::setEnvironment("live");
@@ -77,7 +77,7 @@ $walletRouter->get("/confirm/:method/:userId", function(Request $req, Response $
         }
     }
 
-    return $res->status(403)->json(['success' => false]);
+    return $res->status(403)->json(buildErrors());
 });
 
 $walletRouter->get("/create/:userId", function(Request $req, Response $res){
@@ -93,8 +93,8 @@ $walletRouter->get("/create/:userId", function(Request $req, Response $res){
 
     if($client instanceof PDO){
         if(isset($user) && intval($user['isMerchant']) === 1){
-            $logger->info("User is a merchant");
-            if($fees->amount === 0){ /// YOU CAN ONLY CREATE A BUSINESS ACCOUNT WHEN IT's FREE
+            $logger->info("User is a partner");
+            if($fees->amount === 0){ /// YOU CAN ONLY CREATE A BUSINESS ACCOUNT WHEN IT IS FREE
                 $logger->info("Creation fees are 0.");
                 $walletProvider = new WalletProvider($client);
                 $wallet = $walletProvider->getWalletByUser($user['id']);
@@ -124,14 +124,14 @@ $walletRouter->get("/create/:userId", function(Request $req, Response $res){
             }
         }
     }
-    return $res->status(403)->json(['success' => false]);
+    return $res->status(403)->json(buildErrors());
 });
 
 $walletRouter->global(function(Request $req, Response $res, Closure $next){
     if($req->getOption('connected')){
         return $next();
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $walletRouter->get("/", function(Request $req, Response $res){
@@ -139,20 +139,20 @@ $walletRouter->get("/", function(Request $req, Response $res){
     if($req->getOption('isAdmin')){
         $wallets =  $walletProvider->getWallets();
         if(isset($wallets)){
-            return $res->json(['success' => true, 'wallets' => $wallets]);
+            return $res->json(buildSuccess($wallets));
         }
     }else{
         $wallet =  $walletProvider->getWalletByUser($req->getOption('user')['id']);
         if(isset($wallet)){
-            return $res->json(['success' => true, 'wallet' => $wallet]);
+            return $res->json(buildSuccess($wallet));
         }
     }
-    return $res->json(['success'=> false]);
+    return $res->json(buildErrors());
 });
 
 $walletRouter->get("/fee", function(Request $req, Response $res){
     $systemProvider = new SystemProperties($req->getOption('storage'));
-    return $res->json(['success' => true, 'fee' => $systemProvider->getBusinessWalletFee()]);
+    return $res->json(buildSuccess($systemProvider->getBusinessWalletFee()));
 });
 
 $walletRouter->get("/payment-link", function(Request $req, Response $res){
@@ -182,15 +182,9 @@ $walletRouter->get("/payment-link", function(Request $req, Response $res){
             ]
         ]);
         $paymentUrl = $fedaTrans->generateToken()->url;
-        return $res->json(['success' => true, 'link' => $paymentUrl]);
+        return $res->json(buildSuccess($paymentUrl));
     }
-    return $res->json(['success' => false]);
-});
-
-$walletRouter->get("/payticket/:expectedPayment", function(Request $req, Response $res){
-    $walletId = $req->getParam('wallet');
-    $expectationId = $req->getParam('expectedPayment');
-    /// Launch payment from wallet.
+    return $res->json(buildErrors());
 });
 
 $singleWallet = new Router();
@@ -199,7 +193,7 @@ $singleWallet->get("/",function(Request $req, Response $res){
     // Return wallets
     $walletProvider = new WalletProvider($req->getOption('storage'));
     $wallet = $walletProvider->getWalletById($req->getParam('wallet'));
-    return $res->json(['success' => true, 'wallet' => $wallet]);
+    return $res->json(buildSuccess($wallet));
 });
 
 $singleWallet->get("/history", function(Request $req, Response $res){
@@ -208,9 +202,9 @@ $singleWallet->get("/history", function(Request $req, Response $res){
     $history = $walletProvider->getHistoriesByWallet($walletId);
 
     if(isset($history)){
-        return $res->json(['success' => true, 'history' => $history]);
+        return $res->json(buildSuccess($history));
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
     /// Get wallet history
 });
 
@@ -244,11 +238,11 @@ $singleWallet->get("/deposit/:amount", function(Request $req, Response $res){
                     ]
                 ]);
                 $paymentUrl = $fedaTrans->generateToken()->url;
-                return $res->json(['success' => true, 'link' => $paymentUrl]);
+                return $res->json(buildSuccess(['link' => $paymentUrl]));
             }
         }
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $singleWallet->get("/confirm-deposit/:method", function(Request $req, Response $res){
@@ -299,7 +293,7 @@ $singleWallet->get("/confirm-deposit/:method", function(Request $req, Response $
             }
         }
     }
-    return $res->status(403)->json(['success' => false]);
+    return $res->status(403)->json(buildErrors());
 });
 
 $singleWallet->post("/credit", function(Request $req, Response $res){
@@ -317,14 +311,14 @@ $singleWallet->post("/credit", function(Request $req, Response $res){
                     $depositId = $walletProvider->deposit($walletId, $data->amount, $wallet['balance']['currency'],$data->memo);
                     if(isset($depositId)){
                         $client->commit();
-                        return $res->json(['success' => true, 'deposit' => $depositId]);
+                        return $res->json(buildSuccess($depositId));
                     }
                     $client->rollBack();
                 }
             }
         }
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $singleWallet->post("/debit", function(Request $req, Response $res){
@@ -343,7 +337,7 @@ $singleWallet->post("/debit", function(Request $req, Response $res){
                         $depositId = $walletProvider->withdraw($walletId, $data->amount, $wallet['balance']['currency'],$data->memo);
                         if(isset($depositId)){
                             $client->commit();
-                            return $res->json(['success' => true, 'deposit' => $depositId]);
+                            return $res->json(buildSuccess($depositId));
                         }
                         $client->rollBack();
                     }
@@ -351,13 +345,7 @@ $singleWallet->post("/debit", function(Request $req, Response $res){
             }
         }
     }
-    return $res->json(['success' => false]);
-});
-
-$singleWallet->post("/withdraw", function(Request $req, Response $res){
-    $wallet = $req->getParam('wallet');
-    $data = $req->getOption('body');
-    //Parse amount, try to send amount and if it pass, debit account.
+    return $res->json(buildErrors());
 });
 
 $walletRouter->router("/:wallet", $singleWallet);

@@ -12,9 +12,9 @@ $systemPropsRouter->get("/",function(Request $req, Response $res){
     $props = $provider->getSystemProperties();
     
     if($props){
-        return $res->json(['success' => true, 'properties' => $props]);
+        return $res->json(buildSuccess($props));
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $systemPropsRouter->patch("/",function(Request $req, Response $res){
@@ -23,9 +23,9 @@ $systemPropsRouter->patch("/",function(Request $req, Response $res){
     $props = $provider->updateSystemProperties(json_decode(json_encode($data), true));
     
     if($props){
-        return $res->json(['success' => true]);
+        return $res->json(buildSuccess(true));
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 global $application;

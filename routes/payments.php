@@ -82,30 +82,30 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                             else{
                                 $logger->error("Failed to withdraw the specified amount");
                                 $client->rollBack();
-                                return $res->json(['success' => false]);
+                                return $res->json(buildErrors());
                             }
                         }
                         else{
                             $logger->error("The user wanted to fake this request. He doesn't own this wallet.");
                             $client->rollBack();
-                            return $res->json(['success' => false]);
+                            return $res->json(buildErrors());
                         }
                     }
                     else{
                         $logger->error("The user wanted to fake this request. The wallet he specified is invalid.");
                         $client->rollBack();
-                        return $res->json(['success' => false]);
+                        return $res->json(buildErrors());
                     }
                 }
                 else{
                     $client->rollBack();
-                    return $res->json(['success' => false]);
+                    return $res->json(buildErrors());
                 }
             }
             else{
                 $logger->error("The user wanted to fake this request. His details doesn't anymore exist in our system.");
                 $client->rollBack();
-                return $res->json(['success' => false]);
+                return $res->json(buildErrors());
             }
         }
 
@@ -155,7 +155,7 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                                             if(empty($history)){
                                                 $client->rollBack();
                                                 $logger->error("Failed to deposit commission");
-                                                return $res->json(['success' => false, 'message' => "Failed to deposit commission"]);
+                                                return $res->json(buildErrors(["Echec de depot de la commission"]));
                                             }
                                         }
                                     }
@@ -172,9 +172,7 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                                     $logger->info("Redirected user to its activity page.");
                                     return $res->redirect('https://1xcrypto.net/account/activity');
                                 }else{
-                                    return $res->status(200)->json([
-                                        'success' => true
-                                    ]);
+                                    return $res->status(200)->json(buildSuccess(true));
                                 }
                             }
                         }
@@ -184,9 +182,7 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
         }
     }
     $client->rollBack();
-    return $res->json([
-        'success' => false
-    ]);
+    return $res->json(buildErrors());
 });
 
 $paymentRouter->get("/:ticket", function(Request $req, Response $res){
@@ -195,9 +191,9 @@ $paymentRouter->get("/:ticket", function(Request $req, Response $res){
     $payment = $expectationProvider->getExpectedPaymentByTicketId($ticketId);
 
     if(isset($payment)){
-        return $res->json(['success' => true, 'expectation' => $payment]);
+        return $res->json(buildSuccess($payment));
     }
-    return $res->json(['success'=> false]);
+    return $res->json(buildErrors());
 });
 
 global $application;

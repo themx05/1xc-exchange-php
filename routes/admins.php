@@ -4,23 +4,41 @@ use Core\SystemAdminProvider;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use \Firebase\JWT\JWT;
 
 $adminRouter = new Router();
 
 $adminRouter->get("/signin", function(Request $req, Response $res){
     if($req->getOption('connected') && $req->getOption('isAdmin')){
-        return $res->json(['success' => true]);
+        return $res->json(buildSuccess(true));
     }
-    return $res->json(['success' => false, 'requireAuth' => true]);
+    return $res->json(buildErrors([],['requireAuth' => true]));
 });
 
 $adminRouter->post("/signin", function(Request $req, Response $res){
+    $propertiesProvider = new \Core\SystemProperties($req->getOption('storage'));
     $adminProvider = new SystemAdminProvider($req->getOption('storage'));
+    $authentication = $propertiesProvider->getSystemProperties()->authentication;
     $data = $req->getOption('body');
     $result = $adminProvider->getAdminByCredential($data);
     if(isset($result)){
-        logAdmin($result);
-        return $res->json(['success' => true]);
+        
+        $payload = [
+            'iss' => 'https://api.1xcrypto.net',
+            'iat' => time(),
+            'exp' => time() + 86400 * 3,
+            'scope' => 'administrator',
+            'user' => $result['id'],
+            'firstName' => $result['firstName'],
+            'lastName' => $result['lastName']
+        ];
+
+        $token = JWT::encode($payload, $authentication->secret);
+        setcookie('token', $token, [
+            'expires' => time + 86400 * 3
+        ]);
+        return $res->json(buildSuccess($token));
+        
     }else{
         $rootAdmin = $adminProvider->getRootAdmin();
         if(!isset($rootAdmin) || !isset($rootAdmin['id'])){
@@ -32,13 +50,27 @@ $adminRouter->post("/signin", function(Request $req, Response $res){
 
             $created_id = $adminProvider->createAdmin($std_admin);
             if(!empty($created_id)){
+
                 $created = $adminProvider->getAdminById($created_id);
-                logAdmin($created);
-                return $res->json(['success' => true]);
+                $payload = [
+                    'iss' => 'https://api.1xcrypto.net',
+                    'iat' => time(),
+                    'exp' => time() + 86400 * 3,
+                    'scope' => 'administrator',
+                    'user' => $created['id'],
+                    'firstName' => $created['firstName'],
+                    'lastName' => $created['lastName']
+                ];
+        
+                $token = JWT::encode($payload, $authentication->secret);
+                setcookie('token', $token, [
+                    'expires' => time + 86400 * 3
+                ]);
+                return $res->json(buildSuccess($token));
             }
         }
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $adminRouter->post("/signup", function(Request $req, Response $res){
@@ -47,9 +79,9 @@ $adminRouter->post("/signup", function(Request $req, Response $res){
     $id = $adminProvider->createAdmin($data);
 
     if(!empty($id)){
-        return $res->json(['success' => true]);
+        return $res->json(buildSuccess());
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $adminRouter->global(function(Request $req, Response $res, Closure $next){
@@ -58,10 +90,7 @@ $adminRouter->global(function(Request $req, Response $res, Closure $next){
         $next();
     }
     else{
-        return $res->json([
-            'success' => false,
-            'requireAuth' => true
-        ]);
+        return $res->json(buildErrors([],['requireAuth' => true]));
     }
 });
 
@@ -70,9 +99,9 @@ $adminRouter->get("/", function(Request $req, Response $res){
     $admins = $adminProvider->getAdmins();
 
     if(isset($admins)){
-        return $res->json(['success' => true, 'admins'=>$admins]);
+        return $res->json(buildSuccess($admins));
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $adminRouter->get("/profile", function(Request $req, Response $res){
@@ -80,9 +109,9 @@ $adminRouter->get("/profile", function(Request $req, Response $res){
     $admin = $adminProvider->getAdminById($req->getOption('user')['id']);
 
     if(!empty($admin)){
-        return $res->json(['success' => true, 'admin'=>$admin]);
+        return $res->json(buildSuccess($admin));
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $adminRouter->patch("/profile",function(Request $req, Response $res){
@@ -92,13 +121,12 @@ $adminRouter->patch("/profile",function(Request $req, Response $res){
         $userId = $req->getOption('user')['id'];
         $done = $adminProvider->updateProfile($userId, $data);
         if($done){
-            return $res->json(['success' => true]);
+            return $res->json(buildSuccess($done));
         }
     }
-    return $res->json([
-        'success' => false
-    ]);
+    return $res->json(buildErrors());
 });
+
 $adminRouter->patch("/credentials",function(Request $req, Response $res){
     $data = $req->getOption('body');
     if(isset($data->alias) &&  isset($data->lastPassword) && isset($data->newPassword)){
@@ -107,9 +135,10 @@ $adminRouter->patch("/credentials",function(Request $req, Response $res){
 
         $done = $adminProvider->updatePassword($userId, $data);
         if($done){
-            return $res->json(['success' => true]);
+            return $res->json(buildSuccess());
         }
     }
+    return $res->json(buildErrors());
 });
 
 global $application;

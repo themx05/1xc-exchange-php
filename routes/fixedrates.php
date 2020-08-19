@@ -14,19 +14,18 @@ $fixedRouter->global(function(Request $req, Response $res, Closure $next){
     /**
      * Disable access
      */
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
     
     if($req->getOption('isAdmin')){
         return $next();
     }
-    return $res->json(['success' => false, 'requireAuth' => true]);
+    return $res->json(buildErrors([],['requireAuth' => true]));
 });
-
 
 $fixedRouter->get("/", function(Request $req, Response $res){
     $fixedProvider = new FixedRatesProvider($req->getOption('storage'));
     $rates = $fixedProvider->getRates();
-    return $res->json(['success' => true, 'rates'=>$rates]);
+    return $res->json(buildSuccess($rates));
 });
 
 $fixedRouter->post("/", function(Request $req, Response $res){
@@ -50,10 +49,10 @@ $fixedRouter->post("/", function(Request $req, Response $res){
         );
 
         if(!empty($rateId)){
-            return $res->json(['success' => true, 'rateId' => $rateId]);
+            return $res->json(buildSuccess($rateId));
         }
     }
-    return $res->json(['success' => false, 'error' => 'missing_property']);
+    return $res->json(buildErrors(['Propriété manquante']));
 });
 
 $fixedRouter->patch("/:id", function(Request $req, Response $res){
@@ -74,10 +73,10 @@ $fixedRouter->patch("/:id", function(Request $req, Response $res){
         );
 
         if($done){
-            return $res->json(['success' => true, 'rateId' => $rateId]);
+            return $res->json(buildSuccess($rateId));
         }
     }
-    return $res->json(['success' => false, 'error' => 'invalid_amount']);
+    return $res->json(buildErrors(['Montant invalide']));
 });
 
 $fixedRouter->delete("/:id", function(Request $req, Response $res){
@@ -88,10 +87,10 @@ $fixedRouter->delete("/:id", function(Request $req, Response $res){
         $fixedProvider = new FixedRatesProvider($req->getOption('storage'));
         $done = $fixedProvider->removeFixedRate($rateId);
         if($done){
-            return $res->json(['success' => true]);
+            return $res->json(buildSuccess($done));
         }
     }
-    return $res->json(['success' => false, 'error' => 'invalid_property']);
+    return $res->json(buildErrors(['Propriété invalide.']));
 });
 
 global $application;

@@ -133,14 +133,10 @@ $singleUser->get("/:action", function(Request $req, Response $res){
             $done = $userProvider->disableProfile($id);
         }
         if($done){
-            return $res->json([
-                'success' => true
-            ]);
+            return $res->json(buildSuccess());
         }
     }
-    $res->json([
-        'success' => false
-    ]);
+    $res->json(buildErrors());
 });
 
 $userRouter->router("/:user", $singleUser);

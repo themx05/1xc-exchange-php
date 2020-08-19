@@ -40,6 +40,9 @@ class SystemProperties{
             'businessAccountFee' => [
                 'amount' => 0,
                 'currency' => 'XOF'
+            ],
+            'authentication' => [
+                'secret' => \randomString(64)
             ]
         ]);
     }

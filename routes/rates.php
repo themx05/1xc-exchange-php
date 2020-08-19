@@ -39,7 +39,7 @@ $rateRouter->get("/:source/:dest",function(Request $req, Response $res){
             "amount" => 1,
             'converted' => 1 * $rate
         ];
-        return $res->json(['success' => true, 'data' => $response]);
+        return $res->json(buildSuccess($response));
     }
 
     $converter = new ConversionProvider();
@@ -51,13 +51,10 @@ $rateRouter->get("/:source/:dest",function(Request $req, Response $res){
     
     if($data !== -1){
         if($data['rate'] > 0){
-            return $res->json([
-                'success' => true,
-                'data' => $data
-            ]);
+            return $res->json(buildSuccess($data));
         }
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 global $application;

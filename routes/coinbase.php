@@ -10,8 +10,9 @@ use Routing\Response;
 use Routing\Router;
 
 $coinbaseWebHookRouter = new Router();
-
-/*$coinbaseWebHookRouter->get("/:account/:transaction", function(Request $req, Response $res){
+/**
+FOR TESTING PURPOSES: Disabled in production.
+    $coinbaseWebHookRouter->get("/:account/:transaction", function(Request $req, Response $res){
     global $logger;
     $txId = $req->getParam("transaction");
     $accountId  = $req->getParam("account");
@@ -136,9 +137,7 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
                     if($expectationProvider->deleteExpectedPayment($expectation['id'])){
                         $logger->info("Everything goes fine.");
                         $client->commit();
-                        return $res->json([
-                            'success' => true
-                        ]);
+                        return $res->json(buildSuccess(true));
                     }
                 }
             }
@@ -160,9 +159,7 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
                                 $update_ticket = $client->prepare("UPDATE Tickets SET status = 'paid', paidAt = NOW() WHERE id = ?");
                                 if($update_ticket->execute([$ticket['id']])){
                                     $client->commit();
-                                    return $res->json([
-                                        'success' => true
-                                    ]);
+                                    return $res->json(buildSuccess(true));
                                 }
                             }
                         }
@@ -174,7 +171,7 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
 
     $logger->info("Rolling back.");
     $client->rollBack();
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 global $application;

@@ -11,12 +11,12 @@ $businessRouter->global(function(Request $req, Response $res, Closure $next){
     if($req->getOption('connected')){
         return $next();
     }
-    return $res->json(['success' => false, 'requireAuth' => true]);
+    return $res->json(buildErrors([],['requireAuth' => true]));
 });
 
 $businessRouter->post("/register", function(Request $req, Response $res){
     if($req->getOption('isAdmin')){
-        return $res->json(['success' => false, 'requireAuth' => true]);
+        return $res->json(buildErrors([],['requireAuth' => true]));
     }
 
     $user = $req->getOption('user');
@@ -25,7 +25,7 @@ $businessRouter->post("/register", function(Request $req, Response $res){
     $stored = $merchantProvider->getBusinessProfileByUser($user['id']);
 
     if(isset($stored)){
-        return $res->json(['success' => false, 'message' => 'You already have a business profile']);
+        return $res->json(buildErrors(["Vous avez deja un profil business"]));
     }
     
     $upload_dir = $req->getOption('home')."/uploads";
@@ -35,39 +35,39 @@ $businessRouter->post("/register", function(Request $req, Response $res){
     }
 
     if(!isset($_POST['name'])){
-        return $res->json(['success' => false, 'message' => 'merchant business name is required']);
+        return $res->json(buildErrors(['name' => 'Le nom du profil business est requis']));
     }
 
     if($merchantProvider->getProfileByName($_POST['name']) !== null){
-        return $res->json(['success' => false, 'message' => 'A business profile with the same name exists']);
+        return $res->json(buildErrors(['name' => 'Un profil business du meme nom existe deja']));
     }
 
     if(!isset($_POST['country'])){
-        return $res->json(['success' => false, 'message' => 'merchant country is required']);
+        return $res->json(buildErrors(['country' => 'Le pays du partenaire doit etre mentionné']));
     }
 
     if(!isset($_POST['city'])){
-        return $res->json(['success' => false, 'message' => 'merchant city is required']);
+        return $res->json(buildErrors(['city' => 'La ville du partenaire doit etre mentionné']));
     }
 
     if(!isset($_POST['phone'])){
-        return $res->json(['success' => false, 'message' => 'merchant phone is required']);
+        return $res->json(buildErrors(['phone' => 'Un contact téléphonique du partenaire doit etre mentionné']));
     }
 
     if($merchantProvider->getProfileByPhone($_POST['phone']) !==null){
-        return $res->json(['success' => false, 'message' => 'A business profile with the same phone number exists']);
+        return $res->json(buildErrors(['phone' => 'Ce contact est deja utilisé par un partenaire']));
     }
 
     if(!isset($_POST['email'])){
-        return $res->json(['success' => false, 'message' => 'merchant email is required']);
+        return $res->json(buildErrors(['email' => "L'adresse electronique du partenaire doit etre mentionné email"]));
     }
 
     if($merchantProvider->getProfileByEmail($_POST['email']) !== null){
-        return $res->json(['success' => false, 'message' => 'A business profile with the same email exists']);
+        return $res->json(buildErrors(['email' => 'Un profil business utilise deja cette adresse electronique']));
     }
 
     if(!isset($_FILES['cni']) || empty($_FILES['cni']['tmp_name'])){
-        return $res->json(['success' => false, 'message' => 'merchant cni is required']);
+        return $res->json(buildErrors(['cni' => 'Une image de la C.N.I du partenaire doit etre fournie.']));
     }
 
     $business = [
@@ -99,10 +99,10 @@ $businessRouter->post("/register", function(Request $req, Response $res){
                 ]);
             }
             else{
-                return $res->json(['success' => false, 'message' => 'Failed to store cni']);
+                return $res->json(buildErrors(['message' => 'Echec d\'enregistrement de votre C.N.I']));
             }
         }else{
-            return $res->json(['success' => false, 'message' => 'The cni file type provided is not allowed']);
+            return $res->json(buildErrors(['cni' => 'Le type de fichier soumis n\'est pas accepté']));
         }
     }
 
@@ -120,11 +120,11 @@ $businessRouter->post("/register", function(Request $req, Response $res){
                 ]);
             }
             else{
-                return $res->json(['success' => false, 'message' => 'Failed to store rc']);
+                return $res->json(buildErrors(['rc' => 'Echec d\'enregistrement de votre R.C']));
             }
         }
         else{
-            return $res->json(['success' => false, 'message' => 'The rc file type provided is not allowed']);
+            return $res->json(buildErrors(['rc' => 'Le type fichier n\'est pas accepté']));
         }
     }
 
@@ -142,20 +142,20 @@ $businessRouter->post("/register", function(Request $req, Response $res){
                 ]);
             }
             else{
-                return $res->json(['success' => false,'message' => 'Failed to store ifu']);
+                return $res->json(buildErrors(['ifu' => "Echec d'enregistrement de l'ifu"]));
             }
         }
         else{
-            return $res->json(['success' => false, 'message' => 'The ifu file type provided is not allowed']);
+            return $res->json(buildErrors(['ifu' => 'Le type de fichier n\'est ps accepté']));
         }
     }
 
     $businessId = $merchantProvider->createBusinessProfile($user['id'], $business);
     if(!empty($businessId)){
-        return $res->json(['success' => true, 'businessId' => $businessId]);
+        return $res->json(buildSuccess($businessId));
     }
     else{
-        return $res->json(['success' => false,'message' => 'failed to create business profile']);
+        return $res->json(buildErrors([],['message' => 'failed to create business profile']));
     }
 });
 
@@ -166,7 +166,7 @@ $businessRouter->get("/", function(Request $req, Response $res){
         $profiles = $merchantProvider->getProfiles();
 
         if(isset($profiles)){
-            return $res->json(['success' => true, 'profiles' => $profiles]);
+            return $res->json(buildSuccess($profiles));
         }
     }
     else {
@@ -174,11 +174,11 @@ $businessRouter->get("/", function(Request $req, Response $res){
         $profile = $merchantProvider->getBusinessProfileByUser($user['id']);
 
         if(isset($profile)){
-            return $res->json(['success' => true, 'profile' => $profile]);
+            return $res->json(buildSuccess($profile));
         }
     }
 
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $singleBusiness = new Router();
@@ -191,10 +191,10 @@ $singleBusiness->get("/",function(Request $req, Response $res){
 
     if($req->getOption('isAdmin') || $profile['userId'] === $user['id']){
         if(isset($profile)){
-            return $res->json(['success' => true, 'profile' => $profile]);
+            return $res->json(buildSuccess($profile));
         }
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $singleBusiness->get("/approve", function(Request $req, Response $res){
@@ -211,13 +211,13 @@ $singleBusiness->get("/approve", function(Request $req, Response $res){
                 $done = $merchantProvider->approveProfile($profile['id']);
                 if($done){
                     $client->commit();
-                    return $res->json(['success' => true]);
+                    return $res->json(buildSuccess($done));
                 }
                 $client->rollBack();
             }
         }
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $singleBusiness->patch("/documents/:docName/verified/:enable", function(Request $req, Response $res){
@@ -240,7 +240,7 @@ $singleBusiness->patch("/documents/:docName/verified/:enable", function(Request 
         $done = $merchantProvider->updateProfile($profile['id'], $profile);
         if($done){
             $client->commit();
-            return $res->json(['success' => true, 'verified'=>$enable]);
+            return $res->json(buildSuccess($done));
         }
         $client->rollBack();
     }
@@ -257,11 +257,11 @@ $singleBusiness->delete("/", function(Request $req, Response $res){
         if(isset($profile)){
             $done = $merchantProvider->deleteProfile($profile['id']);
             if($done){
-                return $res->json(['success' => true]);
+                return $res->json(buildSuccess($done));
             }
         }
     }
-    return $res->json(['success' => false]);
+    return $res->json(buildErrors());
 });
 
 $businessRouter->router("/:business", $singleBusiness);

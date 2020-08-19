@@ -11,7 +11,7 @@ $methodAccountRouter->global(function(Request $request, Response $response, Clos
     if($request->getOption('connected')){
         $next();
     }else{
-        $response->json(['success' => false, 'requireAuth' => true]);
+        $response->json(buildErrors([],['requireAuth' => true]));
     }
 });
 
@@ -19,10 +19,10 @@ $methodAccountRouter->get("/", function(Request $request, Response $response){
     $methodProvider = new MethodAccountProvider($request->getOption('storage'));
     $methods = $methodProvider->getAccounts();
     if(isset($methods)){
-        $response->json(['success' => true, 'accounts' => $methods]);
+        $response->json(buildSuccess($methods));
     }
     else{
-        $response->status(500)->json(['success' => false, 'error' => "storage"]);
+        $response->status(500)->json(buildErrors(['Storage error']));
     }
 });
 
@@ -30,10 +30,10 @@ $methodAccountRouter->get("/:id", function(Request $request, Response $response)
     $methodProvider = new MethodAccountProvider($request->getOption('storage'));
     $method = $methodProvider->getAccountById($request->getParam('id'));
     if(isset($method)){
-        $response->json(['success' => true, 'account' => $method]);
+        $response->json(buildSuccess($method));
     }
     else{
-        $response->status(401)->json(['success' => false, 'error' => "bad_account_id"]);
+        $response->status(401)->json(buildErrors(["Identifiant de compte invalide"]));
     }
 });
 
@@ -44,11 +44,11 @@ $methodAccountRouter->post("/", function(Request $request, Response $response){
         if(isset($data->type) && isset($data->details)){
             $hash = $methodProvider->createAccount($data);
             if(!empty($hash)){
-                return $response->json(['success' => true]);
+                return $response->json(buildSuccess($hash));
             }
-        }   
+        }
     }
-    return $response->json(['success' => false]);
+    return $response->status(403)->json(buildErrors([]));
 });
 
 $methodAccountRouter->patch("/:id",function(Request $request, Response $response){
@@ -59,13 +59,12 @@ $methodAccountRouter->patch("/:id",function(Request $request, Response $response
         if(isset($data->type) && isset($data->details)){
             $done = $methodProvider->updateAccount($id,$data);
             if($done){
-                return $response->json(['success' => true]);
+                return $response->json(buildSuccess($done));
             }
         }   
     }
-    return $response->json(['success' => false]);
+    return $response->status(403)->json(buildErrors([]));
 });
-
 
 $methodAccountRouter->delete("/:id",function(Request $request, Response $response){
     $methodProvider = new MethodAccountProvider($request->getOption('storage'));
@@ -75,13 +74,12 @@ $methodAccountRouter->delete("/:id",function(Request $request, Response $respons
         if(isset($data->type) && isset($data->details)){
             $done = $methodProvider->deleteAccount($id);
             if($done){
-                return $response->json(['success' => true]);
+                return $response->json(buildSuccess($done));
             }
         }   
     }
-    return $response->json(['success' => false]);
+    return $response->json(buildErrors([]));
 });
-
 
 global $application;
 $application->router("/accounts", $methodAccountRouter);
