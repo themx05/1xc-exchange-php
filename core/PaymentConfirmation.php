@@ -215,10 +215,10 @@ class PaymentGateway {
         string $expectedPayment, PDO $database = null){
         
         $this->method = $ticket->dest->type;
-        $this->from = PaymentGateway::addressFromMethod($ticket->dest);
+        $this->from = static::addressFromMethod($ticket->dest);
         $this->to = $ticket->address;
-        $this->amount = PaymentGateway::extractFees($ticket);
-        $this->currency = PaymentGateway::getCurrencyFromMethod($ticket->dest);
+        $this->amount = static::extractFees($ticket);
+        $this->currency = static::getCurrencyFromMethod($ticket->dest);
         $this->memo = $memo;
         $this->ticket = $ticket;
         $this->expectedPayment = $expectedPayment;
@@ -296,10 +296,10 @@ class PaymentGateway {
             foreach($compatible_accounts as $k => $wallet){
                 try{
                     $balance = doubleval($wallet->balance->amount);
-                    if(PaymentGateway::canSendAmount(
+                    if(static::canSendAmount(
                         $balance,
                         $this->amount,
-                        PaymentGateway::calculateSendingFees($this->ticket)
+                        static::calculateSendingFees($this->ticket)
                     )){ 
                         /// We found the right account. Lets initiate transaction
                         $logger->info("Amount ".$this->amount." is ready to be sent from ".$wallet->id);
@@ -347,7 +347,7 @@ class PaymentGateway {
         $balance = $pmAccount->getBalance($this->ticket->dest->details->account);
 
         //Check if there is enough money to initiate payment
-        if($balance > 0 && PaymentGateway::canSendAmount($balance, $this->amount, PaymentGateway::calculateSendingFees($this->ticket))){
+        if($balance > 0 && static::canSendAmount($balance, $this->amount, static::calculateSendingFees($this->ticket))){
             $spend = new PerfectMoneySpend(
                 $this->ticket->dest->details->account,
                 $this->ticket->address,

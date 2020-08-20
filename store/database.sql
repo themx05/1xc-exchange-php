@@ -6,7 +6,7 @@ CREATE TABLE SystemProperties(
 );
 
 DROP TABLE IF EXISTS Users;
-CREATE TABLE Users(
+/*CREATE TABLE Users(
     id varchar(255) not null,
     firstName VARCHAR(255) NOT NULL,
     lastName VARCHAR(255) NOT NULL,
@@ -19,6 +19,12 @@ CREATE TABLE Users(
     status enum('active','disabled') NOT NULL default 'active',
     insertionDate datetime not null default CURRENT_TIMESTAMP,
     primary key (`id`)
+); */
+
+CREATE TABLE Users(
+    id varchar(255) NOT NULL,
+    data JSON NOT NULL,
+    primary key(`id`)
 );
 
 DROP TABLE IF EXISTS MerchantProfile;

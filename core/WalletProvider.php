@@ -9,6 +9,7 @@ namespace Providers{
     class WalletProvider{
         public $client;
         public const WALLET_BUSINESS = "business";
+        public const WALLET_STANDARD = "standard";
         public const TX_COMMISSION = "commission";
         public const TX_DEPOSIT = "deposit";
         public const TX_WITHDRAW = "withdraw";
@@ -18,15 +19,18 @@ namespace Providers{
             $this->client = $client;
         }
 
-        private function generateSignature(){
+        /**
+         * Generates signature of 1xc wallets.
+         */
+        private function generateSignature($length = 8){
             $prefix = "1XC";
             $items = "1234567890";
             $generated = $prefix;
-            $length = strlen($items);
+            $count = strlen($items);
 
-            for($i=0; $i<8; $i++){
+            for($i=0; $i<$length; $i++){
                 $rand_pos = rand(0, $length-1);
-                $generated .= $items[$rand_pos];
+                $generated .= substr($items, $rand_pos, 1);
             }
             return $generated;
         }
@@ -67,8 +71,13 @@ namespace Providers{
             return null;
         }
 
-        public function createWallet(string $type = "business", string $currency = 'XOF', float $initialBalance = 0, string $userId){
+        public function createWallet(string $type = "standard", string $currency = 'XOF', float $initialBalance = 0, string $userId){
             $signature = $this->generateSignature();
+
+            while( $this->getWalletById($signature) !== null ){
+                $signature = $this->generateSignature();
+            }
+
             $data = [
                 'id' => $signature,
                 'userId' => $userId,
@@ -81,6 +90,7 @@ namespace Providers{
             ];
 
             $query = "INSERT INTO Wallets (id,data) VALUES(?,?)";
+            
             $stmt = $this->client->prepare($query);
             if($stmt->execute([$signature, json_encode($data)])){
                 return $signature;
@@ -108,6 +118,57 @@ namespace Providers{
                 return $item['data'];
             }
             return null;
+        }
+
+        /**
+         * Returns a user's wallets.
+         */
+        public function getWalletsByUser(string $user){
+            $query = "SELECT * FROM Wallets WHERE JSON_EXTRACT(data,'$.userId') = ?";
+            $stmt = $this->client->prepare($query);
+            if($stmt->execute([$user]) && $stmt->rowCount() > 0){
+                $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $parsed = [];
+                foreach( $items as $value){
+                    array_push($parsed,json_decode($value['data'], true));
+                }
+                return $parsed;
+            }
+            return [];
+        }
+
+        /**
+         * Returns the main wallet of a user.
+         */
+        public function getMainUserWallet(string $user){
+            $query = "SELECT * FROM Wallets WHERE JSON_EXTRACT(data,'$.userId') = ? AND JSON_EXTRACT(data,'$.main') = true";
+            $stmt = $this->client->prepare($query);
+            if($stmt->execute([$user]) && $stmt->rowCount() > 0){
+                $item = $stmt->fetch(PDO::FETCH_ASSOC);
+                $item['data'] = json_decode($item['data'], true);
+                return $item['data'];
+            }
+            return null;
+        }
+
+        /**
+         * Marks a wallet as the user's main wallet
+         */
+        public function markUserWalletAsMain(string $wallet, string $user){
+            $wallets = $this->getWalletsByUser($user);
+            if( count($wallets) > 0){
+                foreach($wallets as $wallet){
+                    $stmt = $this->client->prepare("UPDATE Wallets SET data = ? WHERE id = ?");
+                    if($wallet['id'] === $wallet){
+                        $wallet['main'] = true;
+                    }
+                    else{
+                        $wallet['main'] = false;
+                    }
+                    $stmt->execute([json_encode($wallet), $wallet['id']]);
+                }
+            }
+            return true;
         }
 
         public function saveUserDeposit(string $wallet, string $method, string $reference, float $amount, string $currency){
