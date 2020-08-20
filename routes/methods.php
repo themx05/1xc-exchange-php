@@ -1,5 +1,6 @@
 <?php
 
+use Core\BalanceProvider;
 use Core\MethodProvider;
 use Routing\Request;
 use Routing\Response;
@@ -30,6 +31,22 @@ $methodRouter->get("/:method",function (Request $req, Response $res){
     $res->json(buildErrors());
 });
 
+$methodRouter->get("/:method/balance",function (Request $req, Response $res){
+    $methodId = $req->getParam('method');
+    $methodProvider = new MethodProvider($req->getOption('storage'));
+    $method = $methodProvider->getMethodById($methodId);
+    if(isset($method)){
+        $balanceProvider = new BalanceProvider($req->getOption('storage'));
+        $balance = $balanceProvider->getBalance($method);
+        if($balance != -1){
+            return $res->json(buildSuccess($balance));
+        }
+        else{
+            return $res->json(buildErrors());
+        }
+    }
+    $res->json(buildErrors());
+});
 
 $methodRouter->post("/", function(Request $req, Response $res) {
     $method = $req->getOption('body');

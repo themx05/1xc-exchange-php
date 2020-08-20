@@ -102,7 +102,7 @@ function fullCryptoName(string $crypto){
     return "";
 }
 
-function buildSuccess($data): array{
+function buildSuccess($data=null): array{
 
     $ret = array(
         'success' => true
@@ -117,7 +117,7 @@ function buildSuccess($data): array{
 
 function buildErrors(array $errors = [], array $additional = []){
     $ret = array(
-        'success' => false,
+        'success' => false
     );
 
     if(!empty($errors)){
