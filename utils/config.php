@@ -1,13 +1,13 @@
 <?php
     
-    $phase = "production";
+    $phase = "staging";
 
     $productionDatabase = [
         'host'=>'localhost',
         'port'=>3306,
         'username'=>'xcrypton_bot',
         'password'=>'3Zg5hTGKeM2P',
-        'database'=>'xcrypton_xcrypto'
+        'database'=>'xcrypton_1xcv2'
     ];
 
     $developmentDatabase = [
@@ -32,7 +32,7 @@
 
     function getDefaultDatabase(){
         global $developmentDatabase, $productionDatabase, $phase;
-        if($phase === "production"){
+        if($phase === "staging"){
             return $productionDatabase;
         }
         
@@ -41,7 +41,7 @@
 
     function getDefaultEmailConfig(){
         global $developmentDatabase, $productionDatabase, $phase;
-        if($phase === "production"){
+        if($phase === "staging"){
             return $productionDatabase;
         }
         return $developmentDatabase;

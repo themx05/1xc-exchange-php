@@ -1,25 +1,11 @@
-DROP TABLE IF EXISTS SystemProperties;
-CREATE TABLE SystemProperties(
+DROP TABLE IF EXISTS SystemProps;
+CREATE TABLE SystemProps(
     id varchar(255) not null,
     properties JSON not null,
     primary key(`id`)
 );
 
 DROP TABLE IF EXISTS Users;
-/*CREATE TABLE Users(
-    id varchar(255) not null,
-    firstName VARCHAR(255) NOT NULL,
-    lastName VARCHAR(255) NOT NULL,
-    gender enum('male','female') NOT NULL DEFAULT 'male',
-    email VARCHAR(255) NOT NULL,
-    passwordHash VARCHAR(255) NOT NULL,
-    country varchar(255) NOT NULL,
-    verified TINYINT NOT NULL DEFAULT 0,
-    isMerchant TINYINT NOT NULL DEFAULT 0,
-    status enum('active','disabled') NOT NULL default 'active',
-    insertionDate datetime not null default CURRENT_TIMESTAMP,
-    primary key (`id`)
-); */
 
 CREATE TABLE Users(
     id varchar(255) NOT NULL,
@@ -159,7 +145,6 @@ CREATE TABLE Admins(
     primary key (`id`)
 );
 
-DROP TABLE IF EXISTS Transactions;
 CREATE TABLE Transactions(
     id varchar(255) not null,
     ticketId varchar(255) NOT NULL,

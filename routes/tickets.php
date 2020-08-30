@@ -108,13 +108,13 @@ $ticketRouter->post("/",function (Request $req, Response $res){
                     $ticket['amount'] = $data->amount;
                     $ticket['address'] = $data->address;
                     $ticket['status'] = "pending";
-                    $ticket['enableCommission'] = 0 ;
-                    $ticket['allowed'] = in_array($destination['type'], ["moovmoney"]) ? 0:1;
+                    $ticket['enableCommission'] = false ;
+                    $ticket['allowed'] = in_array($destination['type'], ["moovmoney"]) ? false:true;
 
                     $wallet = $walletProvider->getWalletByUser($user['id']);
                     if(isset($wallet) && $wallet['type'] === "business"){
                         $logger->info("Commission is enabled on this ticket");
-                        $ticket['enableCommission'] = intval($user['isMerchant']) ;
+                        $ticket['enableCommission'] = $user['isMerchant'] === true ;
                     }
                     //step 5
                     $ticket_done = $ticketProvider->createTicket($ticket);

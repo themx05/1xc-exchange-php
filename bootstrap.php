@@ -29,5 +29,6 @@
 
     requireDirectory("./stringbuilder");
     requireDirectory("./router");
+    requireDirectory("./models");
     requireDirectory("./core");
 ?>

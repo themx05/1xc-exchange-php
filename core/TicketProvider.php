@@ -12,21 +12,18 @@ class TicketProvider{
     }
 
     public function createTicket(array $ticket){
-        $insert_query = "INSERT INTO Tickets(id, userId,source,dest,rate,amount,address,allowed,enableCommission,status) values(?,?,?,?,?,?,?,?,?,?)";
+        $insert_query = "INSERT INTO Tickets(id,data) values(?,?)";
         $stmt = $this->client->prepare($insert_query);
 
         $id = generateHash();
+        $ticket['id'] = $id;
+        $ticket['rate'] = doubleval($ticket['rate']);
+        $ticket['amount'] = doubleval($ticket['amount']);
+        $ticket['emittedAt'] = time();
+
         if($stmt->execute([
             $id,
-            $ticket['userId'],
-            json_encode($ticket['source']),
-            json_encode($ticket['dest']),
-            doubleval($ticket['rate']),
-            doubleval($ticket['amount']),
-            $ticket['address'],
-            $ticket['allowed'],
-            $ticket['enableCommission'],
-            $ticket['status']
+            \json_encode($ticket)
         ])){
             return $id;
         }
@@ -34,15 +31,14 @@ class TicketProvider{
     }
 
     public function getTickets(){
-        $query = "SELECT * FROM Tickets ORDER BY emissionDate DESC";
+        $query = "SELECT * FROM Tickets ORDER BY JSON_EXTRACT(data,'$.emittedAt') DESC";
         $stmt = $this->client->query($query);
         if($stmt){
             $rows = [];
             $row = null;
             while(($row = $stmt->fetch(PDO::FETCH_ASSOC)) != false){
-                $row['source'] = json_decode($row['source'],true);
-                $row['dest'] = json_decode($row['dest'],true);
-                array_push($rows, $row);
+                $row['data'] = json_decode($row['data'],true);
+                array_push($rows, $row['data']);
             }
             return $rows;
         }
@@ -50,15 +46,14 @@ class TicketProvider{
     }
 
     public function getTicketsByUser(string $userId){
-        $query = "SELECT * FROM Tickets WHERE userId = ? ORDER BY emissionDate DESC";
+        $query = "SELECT * FROM Tickets WHERE userId = ? ORDER BY JSON_EXTRACT(data,'$emissionDate') DESC";
         $stmt = $this->client->prepare($query);
         if($stmt->execute([$userId])){
             $rows = [];
             $row = null;
             while(($row = $stmt->fetch(PDO::FETCH_ASSOC)) != false){
-                $row['source'] = json_decode($row['source'],true);
-                $row['dest'] = json_decode($row['dest'],true);
-                array_push($rows, $row);
+                $row['data'] = json_decode($row['data'],true);
+                array_push($rows, $row['data']);
             }
             return $rows;
         }
@@ -66,22 +61,19 @@ class TicketProvider{
         return null;
     }
     
-
     public function getTicketById(string $ticketId){
-        $query = "SELECT * FROM Tickets WHERE id = ? ORDER BY emissionDate DESC";
+        $query = "SELECT * FROM Tickets WHERE id = ? ORDER BY JSON_EXTRACT(data,'$emissionDate') DESC";
         $stmt = $this->client->prepare($query);
         if($stmt->execute([$ticketId]) && $stmt->rowCount() > 0){
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            $row['source'] = json_decode($row['source'],true);
-            $row['dest'] = json_decode($row['dest'],true);
-            return $row;
+            return json_decode($row['data'],true);
         }
     
         return null;
     }
 
     public function approveTicket(string $ticketId){
-        $query = "UPDATE Tickets SET allowed = 1 WHERE id = '$ticketId' AND status = 'pending'";
+        $query = "UPDATE Tickets SET data = JSON_SET(data,'$allowed', true) WHERE id = '$ticketId' AND JSON_EXTRACT(data,'$status') = 'pending'";
         if($this->client->query($query)){
             return true;
         }
@@ -100,7 +92,7 @@ class TicketProvider{
         if(isset($expected_payment)){
             $expectedPaymentProvider->deleteExpectedPayment($expected_payment['id']);
         }
-        $abort_query = "UPDATE Tickets SET status = 'cancelled', cancelledAt=NOW() WHERE id = '$ticketId'";
+        $abort_query = "UPDATE Tickets SET data = JSON_SET(data,'$status', 'cancelled'), cancelledAt=NOW() WHERE id = '$ticketId'";
         if($this->client->query($abort_query)){
             $this->client->commit();
             return true;

@@ -12,10 +12,10 @@ class SystemProperties{
     }
 
     public function getSystemProperties():stdClass{
-        $stmt = $this->client->query("SELECT * FROM SystemProperties LIMIT 1");
+        $stmt = $this->client->query("SELECT * FROM SystemProps LIMIT 1");
         if($stmt->rowCount() > 0){
             $props = $stmt->fetch(PDO::FETCH_ASSOC);
-            return json_decode($props['properties']);
+            return json_decode($props['data']);
         }else{
             $this->saveDefault();
             return $this->getSystemProperties();
@@ -23,7 +23,7 @@ class SystemProperties{
     }
 
     public function save(array $config){
-        $stmt = $this->client->prepare("INSERT INTO SystemProperties(id, properties) VALUES(?,?)");
+        $stmt = $this->client->prepare("INSERT INTO SystemProps(id, data) VALUES(?,?)");
         if($stmt->execute([generateHash(),json_encode($config)])){
             return true;
         }
@@ -48,7 +48,7 @@ class SystemProperties{
     }
 
     public function updateSystemProperties(array $newConfig){
-        $stmt = $this->client->prepare("UPDATE SystemProperties SET properties =  ?");
+        $stmt = $this->client->prepare("UPDATE SystemProps SET data =  ?");
         if($stmt->execute([json_encode($newConfig)])){
             return true;
         }
