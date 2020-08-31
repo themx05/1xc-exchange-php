@@ -27,8 +27,8 @@
         }
     }
 
-    requireDirectory("./stringbuilder");
-    requireDirectory("./router");
-    requireDirectory("./models");
-    requireDirectory("./core");
+    spl_autoload_register(function(string $className){
+        $className = str_replace("\\",DIRECTORY_SEPARATOR,$className);
+        require_once("./$className.php");
+    });
 ?>

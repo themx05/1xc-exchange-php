@@ -1,6 +1,7 @@
 <?php
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
+use Models\CoinbaseAccount;
 use Psr\Log\LoggerInterface;
 
 class SendTransaction{
@@ -53,14 +54,14 @@ class CoinbaseUtils{
         public $account;
         public $logger;
 
-        public function __construct(array $account, LoggerInterface $logger){
+        public function __construct(CoinbaseAccount $account, LoggerInterface $logger){
             $this->account = $account;
             $this->logger = $logger;
         }
 
         public function cbAccessSign(string $method, string $path, int $timestamp, string $body = ""){
             $method = strtoupper($method);
-            $secret = $this->account['details']['privateKey'];
+            $secret = $this->account->privateKey;
             $unsigned_cb = $timestamp.$method.$path.$body;
             $cb_sign = hash_hmac("sha256",$unsigned_cb, $secret);
             return $cb_sign;
@@ -72,7 +73,7 @@ class CoinbaseUtils{
             $cb_sign = $this->cbAccessSign("get",$path, $timestamp);
 
             $headers = [
-                'CB-ACCESS-KEY' => $this->account['details']['publicKey'],
+                'CB-ACCESS-KEY' => $this->account->publicKey,
                 'CB-ACCESS-SIGN' => $cb_sign,
                 'CB-ACCESS-TIMESTAMP' => $timestamp
             ];
@@ -94,7 +95,7 @@ class CoinbaseUtils{
             $cb_sign = $this->cbAccessSign("get",$path, $timestamp);
 
             $headers = [
-                'CB-ACCESS-KEY' => $this->account['details']['publicKey'],
+                'CB-ACCESS-KEY' => $this->account->publicKey,
                 'CB-ACCESS-SIGN' => $cb_sign,
                 'CB-ACCESS-TIMESTAMP' => $timestamp
             ];
@@ -159,7 +160,7 @@ class CoinbaseUtils{
             $signature = $this->cbAccessSign("post",$path, $timestamp,$body);
 
             $headers = [
-                'CB-ACCESS-KEY' => $this->account['details']['publicKey'],
+                'CB-ACCESS-KEY' => $this->account->publicKey,
                 'CB-ACCESS-SIGN' => $signature,
                 'CB-ACCESS-TIMESTAMP' => $timestamp,
                 'Content-Type' => 'application/json;charset=utf-8'
@@ -186,7 +187,7 @@ class CoinbaseUtils{
             $cb_sign = $this->cbAccessSign("get",$path, $timestamp);
 
             $headers = [
-                'CB-ACCESS-KEY' => $this->account['details']['publicKey'],
+                'CB-ACCESS-KEY' => $this->account->publicKey,
                 'CB-ACCESS-SIGN' => $cb_sign,
                 'CB-ACCESS-TIMESTAMP' => $timestamp
             ];
@@ -210,7 +211,7 @@ class CoinbaseUtils{
             $signature = $this->cbAccessSign("post",$path, $timestamp,$body);
 
             $headers = [
-                'CB-ACCESS-KEY' => $this->account['details']['publicKey'],
+                'CB-ACCESS-KEY' => $this->account->publicKey,
                 'CB-ACCESS-SIGN' => $signature,
                 'CB-ACCESS-TIMESTAMP' => $timestamp,
                 'Content-Type' => 'application/json;charset=utf-8'
@@ -237,7 +238,7 @@ class CoinbaseUtils{
             $cb_sign = $this->cbAccessSign("get",$path, $timestamp);
 
             $headers = [
-                'CB-ACCESS-KEY' => $this->account['details']['publicKey'],
+                'CB-ACCESS-KEY' => $this->account->publicKey,
                 'CB-ACCESS-SIGN' => $cb_sign,
                 'CB-ACCESS-TIMESTAMP' => $timestamp
             ];

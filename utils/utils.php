@@ -20,11 +20,13 @@ function generateVerificationCode(int $length=6): string{
 }
 
 function getDatabaseInstance():PDO{
-    /*$system = new SystemConfig();
-    if($system->isConfigured()){
-        return DbClient::prepareInstance($system->getDatabaseConfiguration());
-    }*/
-    return DbClient::getInstance();
+    try{
+        $instance = DbClient::getInstance();
+        return $instance;
+    }
+    catch(Exception $e){
+        return null;
+    }
 }
 
 function logCustomer(array $user){

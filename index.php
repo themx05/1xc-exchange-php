@@ -6,6 +6,7 @@ use Core\MerchantProvider;
 use Core\MethodProvider;
 use Core\TicketProvider;
 use Core\UserProvider;
+use Models\Money;
 use Routing\App;
 use Routing\BodyParser;
 use Routing\CorsConfiguration;
@@ -37,6 +38,19 @@ $application->setOption("home","../");
 $application->global($cors->createHandler());
 // JSON content parsing middleware.
 $application->global(BodyParser::json());
+
+$application->global(function(Request $req, Response $res){
+    $rawMoney = new stdClass();
+    $rawMoney->currency = "XOF";
+    $rawMoney->amount = 2000;
+
+    $money = new Money();
+    $money->load($rawMoney);
+
+    var_dump($rawMoney);
+    var_dump($money);
+});
+
 //Inject PDO instance
 $application->global(function(Request& $request, Response& $response, Closure $next){
     global $client;

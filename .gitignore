@@ -3,3 +3,4 @@
 error_log
 php.ini
 .user.ini
+./test_index.php

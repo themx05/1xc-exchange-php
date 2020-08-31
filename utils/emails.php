@@ -2,11 +2,12 @@
     use PHPMailer\PHPMailer\PHPMailer;
     use PHPMailer\PHPMailer\Exception;
     use PHPMailer\PHPMailer\SMTP;
+use Templar\Builder;
 
-    function sendVerificationEmail(string $user, string $emailAddress, string $code): bool{
+function sendVerificationEmail(string $user, string $emailAddress, string $code): bool{
         global $email, $logger;
         
-        $builder = new StringBuilder(TEMPLATE_DIR."/email_validation.temp.html","fr");
+        $builder = new Builder(TEMPLATE_DIR."/email_validation.temp.html","fr");
         $builder->set("code",$code);
         $builder->set("user", $user);
         $builder->set("mail", $emailAddress);
@@ -38,7 +39,7 @@
     function sendMaintenanceEmail(string $address):bool{
         global $email, $logger;
         
-        $builder = new StringBuilder(TEMPLATE_DIR."/switch_to_maintenance.html","fr");
+        $builder = new Builder(TEMPLATE_DIR."/switch_to_maintenance.html","fr");
 
         try{
             $mailer = new PHPMailer();
