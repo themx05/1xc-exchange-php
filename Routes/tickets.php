@@ -1,10 +1,18 @@
 <?php
+
+use Core\ConfirmationData;
+use Core\ConversionProvider;
 use Core\ExpectedPaymentProvider;
 use Core\MethodProvider;
+use Core\PaymentGateway;
 use Core\TicketProvider;
 use Core\TransactionProvider;
 use Core\UserProvider;
-use Providers\WalletProvider;
+use Core\WalletProvider;
+use Models\ExchangeRate;
+use Models\Method;
+use Models\Ticket;
+use Models\WalletHistory;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
@@ -76,10 +84,8 @@ $ticketRouter->post("/",function (Request $req, Response $res){
             $source = $methodProvider->getMethodById($data->source);
             $destination = $methodProvider->getMethodById($data->dest);
 
-            $source_currency = PaymentGateway::getCurrencyFromMethod(json_decode(json_encode($source)));
-            $dest_currency = PaymentGateway::getCurrencyFromMethod(json_decode(json_encode($destination)));
-
-            $rate = -1;
+            $source_currency = $source->getCurrency();
+            $dest_currency = $destination->getCurrency();
 
             if($source_currency !== $dest_currency){
                 $conversionService = new ConversionProvider();
@@ -89,32 +95,35 @@ $ticketRouter->post("/",function (Request $req, Response $res){
                     'amount' => 1
                 ]);   
             }else{
-                $rate = [
-                    'rate' => 1
-                ];
+                $rate = new ExchangeRate();
+                $rate->source = $source_currency;
+                $rate->dest = $dest_currency;
+                $rate->rate = 1;
+                $rate->converted = 1;
+                $rate->amount = 1;
             }
 
-            if($rate !== -1){
+            if($rate !== null){
                 // step 3
                 if(
-                    isset($rate['rate'])
+                    isset($rate->rate)
                 ){
                     // step 4 
                     $ticket = [];
-                    $ticket['userId'] = $user['id'];
+                    $ticket['userId'] = $user->id;
                     $ticket['source'] = $source;
                     $ticket['dest'] = $destination;
-                    $ticket['rate'] = $source_currency === $dest_currency ? 1 : $rate['rate'];
+                    $ticket['rate'] = $source_currency === $dest_currency ? 1 : $rate->rate;
                     $ticket['amount'] = $data->amount;
                     $ticket['address'] = $data->address;
-                    $ticket['status'] = "pending";
+                    $ticket['status'] = Ticket::STATUS_PENDING;
                     $ticket['enableCommission'] = false ;
-                    $ticket['allowed'] = in_array($destination['type'], ["moovmoney"]) ? false:true;
+                    $ticket['allowed'] = in_array($destination->type, [Method::TYPE_MOOV]) ? false:true;
 
-                    $wallet = $walletProvider->getWalletByUser($user['id']);
-                    if(isset($wallet) && $wallet['type'] === "business"){
+                    $wallet = $walletProvider->getBusinessWalletByUser($user->id);
+                    if($wallet !== null){
                         $logger->info("Commission is enabled on this ticket");
-                        $ticket['enableCommission'] = $user['isMerchant'] === true ;
+                        $ticket['enableCommission'] = $user->isMerchant === true ;
                     }
                     //step 5
                     $ticket_done = $ticketProvider->createTicket($ticket);
@@ -162,7 +171,7 @@ $singleTicket = new Router();
 $singleTicket->get("/", function(Request $req, Response $res){
     $ticketProvider = new TicketProvider($req->getOption('storage'));
     $ticket = $ticketProvider->getTicketById($req->getParam('ticket'));
-    if( isset($ticket) && ($req->getOption('isAdmin') || $req->getOption('user')['id'] === $ticket['userId'])){
+    if( $ticket!== null && ($req->getOption('isAdmin') || $req->getOption('user')['id'] === $ticket->userId)){
         return $res->json(buildSuccess($ticket));
     }
     return $res->json(buildErrors());
@@ -214,22 +223,22 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
     $logger->info("Automatic payment launched for ticket ".$ticketId);
     $ticket = $ticketProvider->getTicketById($ticketId);
 
-    if(isset($ticket) && $ticket['status'] === "confirmed" && $ticket['allowed'] == 1){
+    if($ticket !== null && $ticket->isConfirmed() && $ticket->allowed){
         $logger->info("There is a match for the given ticket. Launching Payment Gateway.");
         $gateway = new PaymentGateway(
-            "Transfert 1xCrypto",
-            json_decode(json_encode($ticket)),
+            $ticket->getLabel(),
+            $ticket,
             "",
             $req->getOption('storage')
         );
 
         $userProvider = new UserProvider($req->getOption('storage'));
-        $customer = $userProvider->getProfileById($ticket['userId']);
+        $customer = $userProvider->getProfileById($ticket->userId);
 
         $gateway->setCustomer(json_decode(json_encode($customer)));
         /// Bind Country to gateway
-        if(isset($ticket['dest']['details']['country'])){
-            $gateway->setCountry($ticket['dest']['details']['country']);
+        if($ticket->dest->getCountry() !== null){
+            $gateway->setCountry($ticket->dest->getCountry());
         }
 
         $logger->info("Launching payout.");
@@ -243,14 +252,14 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
                 $logger->info("Saving transaction");
                 $transactionProvider = new TransactionProvider($pdo);
                 $transactionId = $transactionProvider->createOutTicketTransaction($ticket, $payment_result);
-                if(intval($ticket['enableCommission']) === 1){
+                if($ticket->enableCommission){
                     $walletProvider = new WalletProvider($req->getOption('storage'));
-                    $wallet = $walletProvider->getWalletByUser($ticket['userId']);
-                    if(isset($wallet)){
+                    $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
+                    if($wallet !== null){
                         $ticket_obj = json_decode(json_encode($ticket));
-                        $emitterBonus = PaymentGateway::calculateEmitterBonus(json_decode(json_encode($ticket)));
-                        $currency = PaymentGateway::getCurrencyFromMethod($ticket_obj->dest);
-                        $history = $walletProvider->deposit($wallet['id'], $emitterBonus, $currency ,"Commission sur Ticket {$ticket['id']}", WalletProvider::TX_COMMISSION);
+                        $emitterBonus = $ticket->getEmitterCommission();
+                        $currency = $ticket->dest->getCurrency();
+                        $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Ticket {$ticket->id}", WalletHistory::TYPE_COMMISSION);
                         if(empty($history)){
                             $pdo->rollBack();
                             return $res->json(buildErrors(["Failed to deposit commission"]));
@@ -285,32 +294,30 @@ $singleTicket->post("/manual-pay", function(Request $req, Response $res){
     $ticket = $ticketProvider->getTicketById($ticketId);
 
     if(empty($source)){
-        return $res->json(buildErrors(['You didn\'t specify the source of the payment']));
+        return $res->json(buildErrors(['source' => 'You didn\'t specify the source of the payment']));
     }
 
-    if(!isset($amount) || $amount < PaymentGateway::extractFees(json_decode(json_encode($ticket)))){
-        return $res->json(buildErrors(['The amount you paid should be equal to the amount to be paid']));
+    if(!isset($amount) || $amount < $ticket->amountWithoutFees()){
+        return $res->json(buildErrors(['amount' => 'The amount you paid should be equal to the amount to be paid']));
     }
 
     if(empty($source)){
-        return $res->json(buildErrors(['You didn\'t specify the reference of the payment']));
+        return $res->json(buildErrors(['source' => 'You didn\'t specify the reference of the payment']));
     }
 
-    if(isset($ticket) && $ticket['status'] === "confirmed" && intval($ticket['allowed']) === 1){
+    if($ticket !== null && $ticket->isConfirmed() && $ticket->allowed === 1){
         
         $userProvider = new UserProvider($req->getOption('storage'));
-        $customer = $userProvider->getProfileById($ticket['userId']);
+        $customer = $userProvider->getProfileById($ticket->userId);
 
         $payment_result = new ConfirmationData(
             generateHash(),
-            $ticket['dest']['type'],
+            $ticket->dest->type,
             "",
             $amount,
-            PaymentGateway::getCurrencyFromMethod(
-                json_decode(json_encode($ticket['dest']))
-            ),
+            $ticket->dest->getCurrency(),
             $source,
-            $ticket['address'],
+            $ticket->address,
             $reference,
             time()
         );
@@ -320,14 +327,13 @@ $singleTicket->post("/manual-pay", function(Request $req, Response $res){
             $pdo->beginTransaction();
             $transactionProvider = new TransactionProvider($pdo);
             $transactionId = $transactionProvider->createOutTicketTransaction($ticket, $payment_result);
-            if(intval($ticket['enableCommission']) === 1){
+            if($ticket->enableCommission){
                 $walletProvider = new WalletProvider($pdo);
-                $wallet = $walletProvider->getWalletByUser($ticket['userId']);
-                if(isset($wallet)){
-                    $ticket_obj = json_decode(json_encode($ticket));
-                    $emitterBonus = PaymentGateway::calculateEmitterBonus(json_decode(json_encode($ticket)));
-                    $currency = PaymentGateway::getCurrencyFromMethod($ticket_obj->dest);
-                    $history = $walletProvider->deposit($wallet['id'], $emitterBonus, $currency ,"Commission sur Ticket {$ticket['id']}", WalletProvider::TX_COMMISSION);
+                $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
+                if($wallet !== null){
+                    $emitterBonus = $ticket->getEmitterCommission();
+                    $currency = $ticket->dest->getCurrency();
+                    $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Ticket {$ticket->id}", WalletHistory::TYPE_COMMISSION);
                     if(empty($history)){
                         $pdo->rollBack();
                         return $res->json(buildErrors(["Failed to deposit commission"]));

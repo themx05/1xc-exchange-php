@@ -2,8 +2,8 @@
 
 namespace Core;
 
-use GuzzleHttp\Exception\InvalidArgumentException;
 use Psr\Log\AbstractLogger;
+use Psr\Log\InvalidArgumentException as InvalidArgumentException;
 use Psr\Log\LogLevel;
 
 class Logger extends AbstractLogger{

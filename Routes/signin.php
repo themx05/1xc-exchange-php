@@ -6,6 +6,7 @@ use Routing\Response;
 use Routing\Router;
 
 use \Firebase\JWT\JWT;
+use Models\User;
 
 $signinRouter = new Router();
 
@@ -23,16 +24,16 @@ $signinRouter->post("/",function(Request $req, Response $res){
     $data = $req->getOption('body');
     $profile = $userProvider->getProfileByEmail($data->email);
 
-    if(isset($profile) && $userProvider->encryptPassword($data->password) === $profile['passwordHash']){
-        if($profile['verified']){
-            if($profile['status'] === "active"){
+    if($profile !== null && $userProvider->encryptPassword($data->password) === $profile->passwordHash){
+        if($profile->verified){
+            if($profile->status === User::STATUS_ACTIVE){
                 $payload = array(
                     'iss' => 'https://api.1xcrypto.net',
                     'iat' => time(),
                     'exp' => time() + 86400*3, /// 3 days
-                    'uid' => $profile['id'],
-                    'firstName' => $profile['firstName'],
-                    'lastName' => $profile['lastName'],
+                    'uid' => $profile->id,
+                    'firstName' => $profile->firstName,
+                    'lastName' => $profile->lastName,
                     'scope' => 'user',
                 );
 
@@ -43,14 +44,14 @@ $signinRouter->post("/",function(Request $req, Response $res){
                 return $res->json(buildSuccess($token));
             }
             else{
-                return $res->json(buildErrors(["Votre profil n'est pas actif."], ['active' => false]));
+                return $res->json(buildErrors(['default'=>"Votre profil n'est pas actif."], ['active' => false]));
             }
         }
         else{
-            return $res->json(buildErrors(["Votre profil n'est pas vérifié."],['requireVerification' => true]));
+            return $res->json(buildErrors(['default' => "Votre profil n'est pas vérifié."],['requireVerification' => true]));
         }
     }
-    $res->status(401)->json(buildErrors(["Wrong credentials"]));
+    $res->status(401)->json(buildErrors(['default' => "Wrong credentials"]));
 });
 
 global $application;

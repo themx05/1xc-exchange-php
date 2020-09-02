@@ -6,12 +6,7 @@ use Models\BusinessProfile;
 use PDO;
 use stdClass;
 
-class MerchantProvider{
-    public $client;
-
-    public function __construct(PDO $client){
-        $this->client = $client;
-    }
+class MerchantProvider extends Provider{
 
     public function createBusinessProfile(string $userId, stdClass $data){
         if(!isset($data->country)){

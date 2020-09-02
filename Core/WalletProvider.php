@@ -1,21 +1,20 @@
 <?php
 
 namespace Core;
+
+use Models\RegistrationFeeTransaction;
+use Models\Wallet;
+use Models\WalletHistory;
 use PDO;
 use stdClass;
 
-class WalletProvider{
-    public $client;
+class WalletProvider extends Provider{
     public const WALLET_BUSINESS = "business";
     public const WALLET_STANDARD = "standard";
     public const TX_COMMISSION = "commission";
     public const TX_DEPOSIT = "deposit";
     public const TX_WITHDRAW = "withdraw";
     public const TX_NORMAL = "normal";
-    
-    public function __construct(PDO $client){
-        $this->client = $client;
-    }
 
     /**
      * Generates signature of 1xc wallets.
@@ -27,19 +26,28 @@ class WalletProvider{
         $count = strlen($items);
 
         for($i=0; $i<$length; $i++){
-            $rand_pos = rand(0, $length-1);
+            $rand_pos = rand(0, $count-1);
             $generated .= substr($items, $rand_pos, 1);
         }
         return $generated;
     }
 
-    public function saveRegistrationFeeInstant(string $userId, string $method, string $reference, float $amount, string $currency, int $time){
+    public function saveRegistrationFeeInstant(
+        string $userId, 
+        string $wallet, 
+        string $method, 
+        string $reference, 
+        float $amount, 
+        string $currency, 
+        int $time 
+    ){
         $query = "INSERT INTO RegistrationFeeTransaction(id, data) VALUES (?,?)";
         $stmt = $this->client->prepare($query);
         $id = generateHash();
         $data = [
             'id' => $id,
             'user' => $userId,
+            'wallet' => $wallet,
             'method' => $method,
             'reference' => $reference,
             'amount' => $amount,
@@ -64,12 +72,12 @@ class WalletProvider{
         $stmt = $this->client->prepare($query);
         if($stmt->execute([$userId]) && $stmt->rowCount() > 0){
             $item = $stmt->fetch(PDO::FETCH_ASSOC);
-            return json_decode($item['data'], true);
+            return new RegistrationFeeTransaction(json_decode($item['data']));
         }
         return null;
     }
 
-    public function createWallet(string $type = "standard", string $currency = 'XOF', float $initialBalance = 0, string $userId){
+    public function createWallet(string $type = Wallet::TYPE_STANDARD , string $currency = 'XOF', float $initialBalance = 0, string $userId){
         $signature = $this->generateSignature();
 
         while( $this->getWalletById($signature) !== null ){
@@ -80,12 +88,19 @@ class WalletProvider{
             'id' => $signature,
             'userId' => $userId,
             'type' => $type,
+            'isMain' => false,
             'balance' => [
                 'amount' => $initialBalance,
                 'currency' => $currency
             ],
-            'creationDate' => time(),
+            'createdAt' => time(),
         ];
+
+        // mark wallet as user's main wallet if he didn't have a wallet.
+        $previousWallets = $this->getWalletsByUser($userId);
+        if(count($previousWallets) === 0){
+            $data['isMain'] = true;
+        }
 
         $query = "INSERT INTO Wallets (id,data) VALUES(?,?)";
         
@@ -101,19 +116,17 @@ class WalletProvider{
         $stmt = $this->client->prepare($query);
         if($stmt->execute([$id]) && $stmt->rowCount() > 0){
             $item = $stmt->fetch(PDO::FETCH_ASSOC);
-            $item['data'] = json_decode($item['data'], true);
-            return $item['data'];
+            return new Wallet(json_decode($item['data']));
         }
         return null;
     }
 
-    public function getWalletByUser(string $user){
-        $query = "SELECT * FROM Wallets WHERE JSON_EXTRACT(data,'$.userId') = ?";
+    public function getBusinessWalletByUser(string $user){
+        $query = "SELECT * FROM Wallets WHERE JSON_EXTRACT(data,'$.userId') = ? AND JSON_EXTRACT(data,'$.type') = ?";
         $stmt = $this->client->prepare($query);
-        if($stmt->execute([$user]) && $stmt->rowCount() > 0){
+        if($stmt->execute([$user, Wallet::TYPE_BUSINESS]) && $stmt->rowCount() > 0){
             $item = $stmt->fetch(PDO::FETCH_ASSOC);
-            $item['data'] = json_decode($item['data'], true);
-            return $item['data'];
+            return new Wallet(json_decode($item['data']));
         }
         return null;
     }
@@ -124,51 +137,65 @@ class WalletProvider{
     public function getWalletsByUser(string $user){
         $query = "SELECT * FROM Wallets WHERE JSON_EXTRACT(data,'$.userId') = ?";
         $stmt = $this->client->prepare($query);
+        $parsed = [];
         if($stmt->execute([$user]) && $stmt->rowCount() > 0){
-            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $parsed = [];
-            foreach( $items as $value){
-                array_push($parsed,json_decode($value['data'], true));
+            $item =  null;
+            while(($item = $stmt->fetch(PDO::FETCH_ASSOC))){
+                array_push($parsed, new Wallet(json_decode($item['data'])));
             }
-            return $parsed;
         }
-        return [];
+        return $parsed;
     }
 
     /**
      * Returns the main wallet of a user.
      */
     public function getMainUserWallet(string $user){
-        $query = "SELECT * FROM Wallets WHERE JSON_EXTRACT(data,'$.userId') = ? AND JSON_EXTRACT(data,'$.main') = true";
+        $query = "SELECT * FROM Wallets WHERE JSON_EXTRACT(data,'$.userId') = ? AND JSON_EXTRACT(data,'$.isMain') = true";
         $stmt = $this->client->prepare($query);
         if($stmt->execute([$user]) && $stmt->rowCount() > 0){
             $item = $stmt->fetch(PDO::FETCH_ASSOC);
-            $item['data'] = json_decode($item['data'], true);
-            return $item['data'];
+            return new Wallet(json_decode($item['data']));
         }
         return null;
     }
 
+    public function getWallets(){
+        $query = "SELECT * FROM Wallets ORDER BY JSON_EXTRACT(data,'$.creationDate') DESC";
+        $stmt = $this->client->prepare($query);
+        $parsed = [];
+        if($stmt->execute() && $stmt->rowCount() > 0){
+            $item =  null;
+            while(($item = $stmt->fetch(PDO::FETCH_ASSOC))){
+                array_push($parsed, new Wallet(json_decode($item['data'])));
+            }
+        }
+        return $parsed;
+    }
+    
     /**
      * Marks a wallet as the user's main wallet
      */
-    public function markUserWalletAsMain(string $wallet, string $user){
+    public function markUserWalletAsMain(string $walletId, string $user){
         $wallets = $this->getWalletsByUser($user);
         if( count($wallets) > 0){
             foreach($wallets as $wallet){
                 $stmt = $this->client->prepare("UPDATE Wallets SET data = ? WHERE id = ?");
-                if($wallet['id'] === $wallet){
-                    $wallet['main'] = true;
+                if($wallet instanceof Wallet){
+                    if($wallet->id === $walletId){
+                        $wallet->isMain = true;
+                    }
+                    else{
+                        $wallet->isMain = false;
+                    }
+                    $stmt->execute([json_encode($wallet), $wallet->id]);
                 }
-                else{
-                    $wallet['main'] = false;
-                }
-                $stmt->execute([json_encode($wallet), $wallet['id']]);
             }
         }
         return true;
     }
 
+    /*
     public function saveUserDeposit(string $wallet, string $method, string $reference, float $amount, string $currency){
         $data = [
             'id' => generateHash(),
@@ -189,8 +216,9 @@ class WalletProvider{
             return $data['id'];
         }
         return "";
-    }
+    }*/
 
+    /*
     public function getDepositByReference(string $reference){
         $query = "SELECT * FROM  WalletDeposit WHERE JSON_EXTRACT(data,'$.reference') = ?";
         $stmt = $this->client->prepare($query);
@@ -199,41 +227,39 @@ class WalletProvider{
             return json_decode($item['data'], true);
         }
         return null;
-    }
+    }*/
 
-    public function deposit(string $walletId, float $amount = 0, $currency= "XOF",string $memo="", string $type = WalletProvider::TX_NORMAL){
+    public function deposit(string $walletId, float $amount = 0, $currency= "XOF",string $memo="", string $type = WalletHistory::TYPE_NORMAL){
         if($amount > 0){
             $wallet = $this->getWalletById($walletId);
 
-            if(!isset($wallet)){
-                return "";
-            }
-
-            if($currency !== $wallet['balance']['currency']){
-                $converter = new ConversionProvider();
-                $result = $converter->convert([
-                    'source' => $currency,
-                    'dest' => $wallet['balance']['currency'],
-                    'amount' => $amount
-                ]);
-
-                if($result !== -1){
-                    $converted = $result['converted'];
-                    $amount = $converted;
+            if(isset($wallet)){
+                if($currency !== $wallet->balance->currency){
+                    $converter = new ConversionProvider();
+                    $result = $converter->convert([
+                        'source' => $currency,
+                        'dest' => $wallet->balance->currency,
+                        'amount' => $amount
+                    ]);
+    
+                    if($result !== null){
+                        $converted = $result->converted;
+                        $amount = $converted;
+                    }
+                    else{
+                        return "";
+                    }
                 }
-                else{
-                    return "";
+    
+                $wallet->credit($amount);
+                
+                $query = 'UPDATE Wallets SET data = ? WHERE id = ?';
+                $stmt = $this->client->prepare($query);
+    
+                if($stmt->execute([json_encode($wallet), $wallet->id])){
+                    /// Handle History Management.
+                    return $this->createHistory($walletId, $amount, $memo, $type);
                 }
-            }
-
-            $wallet['balance']['amount'] +=$amount;
-            
-            $query = 'UPDATE Wallets SET data = ? WHERE id = ?';
-            $stmt = $this->client->prepare($query);
-
-            if($stmt->execute([json_encode($wallet), $walletId])){
-                /// Handle History Management.
-                return $this->createHistory($walletId, $amount, $memo, $type);
             }
         }
         return "";
@@ -243,105 +269,86 @@ class WalletProvider{
         if($amount > 0){
             $wallet = $this->getWalletById($walletId);
 
-            if(!isset($wallet)){
-                return "";
-            }
-
-            if($currency !== $wallet['balance']['currency']){
-                $converter = new ConversionProvider();
-                $result = $converter->convert([
-                    'source' => $currency,
-                    'dest' => $wallet['balance']['currency'],
-                    'amount' => $amount
-                ]);
-
-                if($result !== -1){
-                    $converted = $result['converted'];
-                    $amount = $converted;
+            if(isset($wallet)){
+                if($currency !== $wallet->balance->currency){
+                    $converter = new ConversionProvider();
+                    $result = $converter->convert([
+                        'source' => $currency,
+                        'dest' => $wallet->balance->currency,
+                        'amount' => $amount
+                    ]);
+    
+                    if($result !== null){
+                        $converted = $result->converted;
+                        $amount = $converted;
+                    }
+                    else{
+                        return "";
+                    }
                 }
-                else{
+                
+                $debited = $wallet->debit($amount);
+                
+                if(!$debited){
                     return "";
                 }
-            }
 
-            if($wallet['balance']['amount'] < $amount){
-                return "";
-            }
-
-            $wallet['balance']['amount'] -=$amount;
-            
-            $query = 'UPDATE Wallets SET data = ? WHERE id = ?';
-            $stmt = $this->client->prepare($query);
-            if($stmt->execute([json_encode($wallet), $walletId])){
-                /// Handle History Management.
-                return $this->createHistory($walletId, -1*$amount, $memo);
+                $query = 'UPDATE Wallets SET data = ? WHERE id = ?';
+                $stmt = $this->client->prepare($query);
+    
+                if($stmt->execute([json_encode($wallet), $wallet->id])){
+                    /// Handle History Management.
+                    return $this->createHistory($walletId, $amount, $memo);
+                }
             }
         }
         return "";
     }
 
-    public function createHistory(string $walletId, float $amount, string $memo, string $type = WalletProvider::TX_NORMAL){
+    public function createHistory(string $walletId, float $amount, string $memo, string $type = WalletHistory::TYPE_NORMAL){
         $wallet = $this->getWalletById($walletId);
-        $data = [
-            'id' => generateHash(),
-            'wallet' => $walletId,
-            'type' => $type,
-            'amount' => $amount,
-            'currency' => $wallet['balance']['currency'],
-            'memo' => $memo,
-            'creationDate' => time()
-        ];
-        $query = "INSERT INTO WalletHistory(id, data) VALUES(?,?)";
-        $stmt = $this->client->prepare($query);
-        if($stmt->execute([$data['id'], json_encode($data)])){
-            return $data['id'];
+
+        if($wallet !== null){
+            $data = [
+                'id' => generateHash(),
+                'wallet' => $walletId,
+                'type' => $type,
+                'amount' => $amount,
+                'currency' => $wallet->balance->currency,
+                'memo' => $memo,
+                'creationDate' => time()
+            ];
+            $query = "INSERT INTO WalletHistory(id, data) VALUES(?,?)";
+            $stmt = $this->client->prepare($query);
+            if($stmt->execute([$data['id'], json_encode($data)])){
+                return $data['id'];
+            }
         }
         return "";
-    }
-
-    public function getWallets(){
-        $query = "SELECT * FROM Wallets ORDER BY JSON_EXTRACT(data,'$.creationDate') ASC";
-        $stmt = $this->client->prepare($query);
-        if($stmt->execute() && $stmt->rowCount() > 0){
-            $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $parsed = [];
-            foreach($items as $key => $value){
-                $value['data'] = json_decode($value['data']);
-                array_push($parsed,$value['data']);
-            }
-            return $parsed;
-        }
-        return [];
     }
 
     public function getHistoriesByWallet(string $wallet){
         $query = "SELECT * FROM WalletHistory WHERE JSON_EXTRACT(data,'$.wallet') = ?";
         $stmt = $this->client->prepare($query);
 
+        $parsed = [];
         if($stmt->execute([$wallet]) && $stmt->rowCount() > 0){
-            $raw = $stmt->fetchAll(PDO::FETCH_ASSOC);
-            $parsed = [];
-            foreach($raw as $key => $value){
-                array_push($parsed, json_decode($value['data']));
+            $raw = null;
+            while(($raw = $stmt->fetch(PDO::FETCH_ASSOC))){
+                array_push($parsed, new WalletHistory(json_decode($raw['data'])));
             }
-            return $parsed;
         }
-        return [];
+        return $parsed;
     }
 
     public function getHistoryById(string $id){
         $query = "SELECT * FROM WalletHistory WHERE id = ?";
         $stmt = $this->client->prepare($query);
         if($stmt->execute([$id]) && $stmt->rowCount() > 0){
-            $items = $stmt->fetch(PDO::FETCH_ASSOC);
-            $parsed = [];
-            foreach($items as $key => $value){
-                $value['data'] = json_decode($value['data']);
-                array_push($parsed,$value['data']);
-            }
-            return $parsed;
+            $item = $stmt->fetch(PDO::FETCH_ASSOC);
+            return new WalletHistory(json_decode($item['data']));
         }
-        return [];
+        return null;
     }
 }
 

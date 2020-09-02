@@ -18,18 +18,13 @@ $methodAccountRouter->global(function(Request $request, Response $response, Clos
 $methodAccountRouter->get("/", function(Request $request, Response $response){
     $methodProvider = new MethodAccountProvider($request->getOption('storage'));
     $methods = $methodProvider->getAccounts();
-    if(isset($methods)){
-        $response->json(buildSuccess($methods));
-    }
-    else{
-        $response->status(500)->json(buildErrors(['Storage error']));
-    }
+    $response->json(buildSuccess($methods));
 });
 
 $methodAccountRouter->get("/:id", function(Request $request, Response $response){
     $methodProvider = new MethodAccountProvider($request->getOption('storage'));
     $method = $methodProvider->getAccountById($request->getParam('id'));
-    if(isset($method)){
+    if($method !== null){
         $response->json(buildSuccess($method));
     }
     else{

@@ -1,6 +1,7 @@
 <?php
 
 use Core\MerchantProvider;
+use Models\Document;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
@@ -24,8 +25,8 @@ $businessRouter->post("/register", function(Request $req, Response $res){
 
     $stored = $merchantProvider->getBusinessProfileByUser($user['id']);
 
-    if(isset($stored)){
-        return $res->json(buildErrors(["Vous avez deja un profil business"]));
+    if($stored !== null){
+        return $res->json(buildErrors(['default' => "Vous avez déja un profil business"]));
     }
     
     $upload_dir = $req->getOption('home')."/uploads";
@@ -150,7 +151,7 @@ $businessRouter->post("/register", function(Request $req, Response $res){
         }
     }
 
-    $businessId = $merchantProvider->createBusinessProfile($user['id'], $business);
+    $businessId = $merchantProvider->createBusinessProfile($user['id'], json_decode(json_encode($business)));
     if(!empty($businessId)){
         return $res->json(buildSuccess($businessId));
     }
@@ -164,10 +165,7 @@ $businessRouter->get("/", function(Request $req, Response $res){
     
     if($req->getOption('isAdmin')){
         $profiles = $merchantProvider->getProfiles();
-
-        if(isset($profiles)){
-            return $res->json(buildSuccess($profiles));
-        }
+        return $res->json(buildSuccess($profiles));
     }
     else {
         $user = $req->getOption('user');
@@ -189,8 +187,8 @@ $singleBusiness->get("/",function(Request $req, Response $res){
     $profile = $merchantProvider->getProfileById($business);
     $user = $req->getOption('user');
 
-    if($req->getOption('isAdmin') || $profile['userId'] === $user['id']){
-        if(isset($profile)){
+    if($profile !== null){
+        if($req->getOption('isAdmin') || $profile->userId === $user['id']){
             return $res->json(buildSuccess($profile));
         }
     }
@@ -208,7 +206,7 @@ $singleBusiness->get("/approve", function(Request $req, Response $res){
         if($req->getOption('isAdmin')){
             if(isset($profile)){
                 $client->beginTransaction();
-                $done = $merchantProvider->approveProfile($profile['id']);
+                $done = $merchantProvider->approveProfile($profile->id);
                 if($done){
                     $client->commit();
                     return $res->json(buildSuccess($done));
@@ -230,14 +228,18 @@ $singleBusiness->patch("/documents/:docName/verified/:enable", function(Request 
 
         $profile = $merchantProvider->getProfileById($business);
         
-        foreach($profile['documents'] as $key => $doc){
-            if($doc['name'] == $docName){
-                $doc['verified'] = $enable;
+        if($profile !== null){
+            foreach($profile->documents as $key => $doc){
+                $parsed = new Document($doc);
+                if($parsed->name === $docName){
+                    $parsed->verified = $enable;
+                }
+                $profile->documents[$key] = $doc;
             }
-            $profile['documents'][$key] = $doc;
         }
+        
         $client->beginTransaction();
-        $done = $merchantProvider->updateProfile($profile['id'], $profile);
+        $done = $merchantProvider->updateProfile($profile);
         if($done){
             $client->commit();
             return $res->json(buildSuccess($done));
@@ -255,7 +257,7 @@ $singleBusiness->delete("/", function(Request $req, Response $res){
 
     if($req->getOption('isAdmin')){
         if(isset($profile)){
-            $done = $merchantProvider->deleteProfile($profile['id']);
+            $done = $merchantProvider->deleteProfile($profile->id);
             if($done){
                 return $res->json(buildSuccess($done));
             }

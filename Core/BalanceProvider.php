@@ -4,37 +4,35 @@
  */
 namespace Core;
 
-    use CoinbaseUtils;
+use CoinbaseUtils;
 use Models\Method;
 use PDO;
+use Utils\Coinbase\Coinbase;
 
-class BalanceProvider{
-    public PDO $client;
+class BalanceProvider extends Provider{
 
-    public function __construct(PDO $client){
-        $this->client = $client;
-    }
-
-    public function getBalance(array $method){
+    public function getBalance(Method $method){
         global $logger;
         $maProvider = new MethodAccountProvider($this->client);
-        if($method['type'] === Method::TYPE_PERFECTMONEY){
+        if($method->type === Method::TYPE_PERFECTMONEY){
             $pmSpecs = $maProvider->getPerfectMoney();
-            $pmAccount = new PerfectMoney($pmSpecs['details']['accountId'],$pmSpecs['details']['passphrase']);
-            $address = PaymentGateway::addressFromMethod(json_decode(json_encode($method)));
-            return $pmAccount->getBalance($address);
+            if($pmSpecs !== null){
+                $pmAccount = new PerfectMoney($pmSpecs->accountId,$pmSpecs->passphrase);
+                $address = $method->getAddress();
+                return $pmAccount->getBalance($address);
+            }
         }
-        else if($method['type'] === Method::TYPE_MTN){
+        else if($method->type === Method::TYPE_MTN){
             return -1;
         }
-        else if($method['type'] === Method::TYPE_MOOV){
+        else if($method->type === Method::TYPE_MOOV){
             return -1;
         }
-        else if($method['category'] === Method::CATEGORY_CRYPTO){
-            $currency = PaymentGateway::getCurrencyFromMethod(json_decode(json_encode($method)));
+        else if($method->category === Method::CATEGORY_CRYPTO){
+            $currency = $method->getCurrency();
             $coinbaseSpecs = $maProvider->getCoinbase();
-            $coinbaseUtils = new CoinbaseUtils($coinbaseSpecs, $logger);
-            $compatible_accounts = $coinbaseUtils->getWalletsByCurrency(strtoupper($currency));
+            $coinbaseUtils = new Coinbase($coinbaseSpecs, $logger);
+            $compatible_accounts = $coinbaseUtils->getWalletsByCurrency($currency);
 
             if(!empty($compatible_accounts)){
                 $wallet = $compatible_accounts[0];

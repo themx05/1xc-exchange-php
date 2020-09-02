@@ -17,10 +17,7 @@ $transactionRouter->global(function(Request $req, Response $res, Closure $next){
 $transactionRouter->get("/", function(Request $req, Response $res){
     $transactionProvider = new TransactionProvider($req->getOption('storage'));
     $transactions = $transactionProvider->getTransactions();
-    if(isset($transactions)){
-        return $res->json(buildSuccess($transactions));
-    }
-    return $res->json(buildErrors());
+    return $res->json(buildSuccess($transactions));
 });
 
 global $application;

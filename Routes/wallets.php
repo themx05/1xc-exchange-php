@@ -3,9 +3,11 @@
 use Core\MethodAccountProvider;
 use Core\SystemProperties;
 use Core\UserProvider;
+use Core\WalletProvider;
 use FedaPay\FedaPay;
 use FedaPay\Transaction;
-use Providers\WalletProvider;
+use Models\Method;
+use Models\Wallet;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
@@ -19,7 +21,7 @@ $walletRouter->get("/confirm/:method/:userId", function(Request $req, Response $
     $method = $req->getParam('method');
     $userId = $req->getParam('userId');
 
-    if($method !=="mobile"){
+    if($method !== Method::CATEGORY_MOBILE){
         return $res->json(buildErrors());
     }
     
@@ -30,14 +32,14 @@ $walletRouter->get("/confirm/:method/:userId", function(Request $req, Response $
 
     $fees = $systemProps->getBusinessWalletFee();
     $user = $userProvider->getProfileById($userId);
-    if($client instanceof PDO && isset($user) && intval($user['isMerchant']) === 1){
+    if($client instanceof PDO && $user !== null && $user->isMerchant === 1){
         $logger->info("Well, user is a partner");
         if(isset($fees)){
             $logger->info("Registration fees are available. Fees: ".json_encode($fees));
             if($fees->amount > 0){
                 $feda_account = $methodAccountProvider->getFedaPay();
                 FedaPay::setEnvironment("live");
-                FedaPay::setApiKey($feda_account['details']['privateKey']);
+                FedaPay::setApiKey($feda_account->privateKey);
 
                 $transaction = Transaction::retrieve($txId);
                 if(
@@ -48,29 +50,28 @@ $walletRouter->get("/confirm/:method/:userId", function(Request $req, Response $
                     $logger->info("Transaction is okay.");
     
                     $walletProvider = new WalletProvider($client);
-                    $wallet = $walletProvider->getWalletByUser($user['id']);
-                    if(!isset($wallet) || !isset($wallet['id'])){
+                    $wallet = $walletProvider->getBusinessWalletByUser($user->id);
+                    if($wallet === null){
                         $logger->info("User didn't have a business wallet.");
                         $client->beginTransaction();
-                        $registrationId = $walletProvider->saveRegistrationFeeInstant(
-                            $user['id'],
-                            $transaction->mode,
-                            $txId,
-                            $transaction->amount,
-                            $fees->currency, 
-                            time()
-                        );
-                        $logger->info("Registration entry saved.");
-                        if(!empty($registrationId)){
-                            $logger->info("Creating wallet");
-                            $walletId = $walletProvider->createWallet(WalletProvider::WALLET_BUSINESS,'XOF',0,$user['id']);
-                            if(!empty($walletId)){
+                        $walletId = $walletProvider->createWallet(Wallet::TYPE_BUSINESS,'XOF',0,$user->id);
+                        if(!empty($walletId)){
+                            $registrationId = $walletProvider->saveRegistrationFeeInstant(
+                                $user->id,
+                                $walletId,
+                                Method::typeFromFedaMode($transaction->mode) ,
+                                $txId,
+                                $transaction->amount,
+                                $fees->currency, 
+                                time()
+                            );
+                            if(!empty($registrationId)){
                                 $logger->info("Wallet created");
                                 $client->commit();
                                 return $res->redirect("https://1xcrypto.net/account/merchant");
                             }
+                            $client->rollBack();
                         }
-                        $client->rollBack();
                     }
                 }
             }
@@ -92,28 +93,30 @@ $walletRouter->get("/create/:userId", function(Request $req, Response $res){
     $user = $userProvider->getProfileById($req->getParam('userId'));
 
     if($client instanceof PDO){
-        if(isset($user) && intval($user['isMerchant']) === 1){
+        if($user !== null && $user->isMerchant === 1){
             $logger->info("User is a partner");
-            if($fees->amount === 0){ /// YOU CAN ONLY CREATE A BUSINESS ACCOUNT WHEN IT IS FREE
+            if($fees->amount === 0){ /// USER CAN ONLY CREATE A BUSINESS WALLET WHEN IT IS FREE
                 $logger->info("Creation fees are 0.");
                 $walletProvider = new WalletProvider($client);
-                $wallet = $walletProvider->getWalletByUser($user['id']);
-                if(!isset($wallet) || !isset($wallet['id'])){
+                $wallet = $walletProvider->getBusinessWalletByUser($user->id);
+                if($wallet === null){
                     $logger->info("User didn't have a wallet account");
                     $client->beginTransaction();
-                    $registrationId = $walletProvider->saveRegistrationFeeInstant(
-                        $user['id'],
-                        "",
-                        "",
-                        0,
-                        $fees->currency, 
-                        time()
-                    );
-                    if(!empty($registrationId)){
-                        $logger->info("Saved registration entry");
-                        $walletId = $walletProvider->createWallet(WalletProvider::WALLET_BUSINESS,'XOF',0,$user['id']);
-                        if(!empty($walletId)){
-                            $logger->info("Created business wallet");
+
+                    $walletId = $walletProvider->createWallet(Wallet::TYPE_BUSINESS,'XOF',0,$user->id);
+                    if(!empty($walletId)){
+                        $logger->info("Created business wallet");
+                        $registrationId = $walletProvider->saveRegistrationFeeInstant(
+                            $user->id,
+                            $walletId,
+                            "",
+                            "",
+                            0,
+                            $fees->currency, 
+                            time()
+                        );
+                        if(!empty($registrationId)){
+                            $logger->info("Saved registration entry");
                             $client->commit();
                             return $res->redirect("https://1xcrypto.net/account/merchant");
                         }
@@ -137,15 +140,11 @@ $walletRouter->global(function(Request $req, Response $res, Closure $next){
 $walletRouter->get("/", function(Request $req, Response $res){
     $walletProvider = new WalletProvider($req->getOption('storage'));
     if($req->getOption('isAdmin')){
-        $wallets =  $walletProvider->getWallets();
-        if(isset($wallets)){
-            return $res->json(buildSuccess($wallets));
-        }
+        $wallets = $walletProvider->getWallets();
+        return $res->json(buildSuccess($wallets));
     }else{
-        $wallet =  $walletProvider->getWalletByUser($req->getOption('user')['id']);
-        if(isset($wallet)){
-            return $res->json(buildSuccess($wallet));
-        }
+        $wallets =  $walletProvider->getWalletsByUser($req->getOption('user')['id']);
+        return $res->json(buildSuccess($wallets));
     }
     return $res->json(buildErrors());
 });
@@ -167,18 +166,18 @@ $walletRouter->get("/payment-link", function(Request $req, Response $res){
         $methodAccountProvider = new MethodAccountProvider($req->getOption('storage'));
         $feda_account = $methodAccountProvider->getFedaPay();
         FedaPay::setEnvironment("live");
-        FedaPay::setApiKey($feda_account['details']['privateKey']);
+        FedaPay::setApiKey($feda_account->privateKey);
         $fedaTrans = Transaction::create([
-            'description' => "Frais de portefeuille business",
+            'description' => "Business Wallet",
             'amount' => $fee->amount,
-            'callback_url' => "https://api.1xcrypto.net/wallets/confirm/mobile/{$user['id']}",
+            'callback_url' => "https://api.1xcrypto.net/wallets/confirm/mobile/{$user->id}",
             'currency' => [
                 'iso' => $fee->currency
             ],
             'customer' => [
-                'firstname' => $user['firstName'],
-                'lastname' => $user['lastName'],
-                'email' => $user['email']
+                'firstname' => $user->firstName,
+                'lastname' => $user->lastName,
+                'email' => $user->email
             ]
         ]);
         $paymentUrl = $fedaTrans->generateToken()->url;
@@ -193,7 +192,9 @@ $singleWallet->get("/",function(Request $req, Response $res){
     // Return wallets
     $walletProvider = new WalletProvider($req->getOption('storage'));
     $wallet = $walletProvider->getWalletById($req->getParam('wallet'));
-    return $res->json(buildSuccess($wallet));
+    if($wallet !== null){
+        return $res->json(buildSuccess($wallet));
+    }
 });
 
 $singleWallet->get("/history", function(Request $req, Response $res){
@@ -214,13 +215,12 @@ $singleWallet->post("/credit", function(Request $req, Response $res){
         if(isset($data->memo) && isset($data->amount) && $data->amount > 0){
             $walletProvider = new WalletProvider($req->getOption('storage'));
             $walletId = $req->getParam('wallet');
-
             $client = $req->getOption('storage');
             if($client instanceof PDO){
                 $wallet = $walletProvider->getWalletById($walletId);
-                if(isset($wallet)){
+                if($wallet !== null){
                     $client->beginTransaction();
-                    $depositId = $walletProvider->deposit($walletId, $data->amount, $wallet['balance']['currency'],$data->memo);
+                    $depositId = $walletProvider->deposit($walletId, $data->amount, $wallet->balance->currency,$data->memo);
                     if(isset($depositId)){
                         $client->commit();
                         return $res->json(buildSuccess($depositId));
@@ -243,10 +243,10 @@ $singleWallet->post("/debit", function(Request $req, Response $res){
             $client = $req->getOption('storage');
             if($client instanceof PDO){
                 $wallet = $walletProvider->getWalletById($walletId);
-                if(isset($wallet)){
-                    if($data->amount <= $wallet['balance']['amount']){
+                if($wallet !== null){
+                    if($wallet->canDebit($data->amount)){
                         $client->beginTransaction();
-                        $depositId = $walletProvider->withdraw($walletId, $data->amount, $wallet['balance']['currency'],$data->memo);
+                        $depositId = $walletProvider->withdraw($walletId, $data->amount, $wallet->balance->currency,$data->memo);
                         if(isset($depositId)){
                             $client->commit();
                             return $res->json(buildSuccess($depositId));

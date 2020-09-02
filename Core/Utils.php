@@ -9,7 +9,7 @@ use PDO;
 
 Class Utils{
     
-    function preparePMTransaction(PDO $client){
+    static function preparePMTransaction(PDO $client){
         if(
             isset($_POST['PAYMENT_ID']) &&
             isset($_POST['PAYEE_ACCOUNT']) &&
@@ -60,7 +60,7 @@ Class Utils{
         return null;
     }
 
-    function prepareFedaPayTransaction(PDO $client, string $txId, string $paymentId){
+    static function prepareFedaPayTransaction(PDO $client, string $txId, string $paymentId){
         $provider = new ExpectedPaymentProvider($client);
         $expected_payment = $provider->getExpectedPaymentById($paymentId);
         if($expected_payment !== null && $expected_payment instanceof ExpectedPayment){

@@ -121,7 +121,7 @@ class ConversionProvider{
                 if($rate == -1){
                     $rate = $this->consumeFixerEndpoint($data['source'],$data['dest']);
                     if($rate == -1){
-                        return [];
+                        return null;
                     }
                 }
             }

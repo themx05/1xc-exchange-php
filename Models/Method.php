@@ -30,6 +30,10 @@ class Method{
         return new BankingDetails($this->details);
     }
 
+    public function detailsAsCurrencyDetails(){
+        return new CurrencyDetails($this->details);
+    }
+
     public function detailsAsCrypto(){
         return new CryptoCurrencyDetails($this->details);
     }
@@ -38,6 +42,43 @@ class Method{
         return new MobileDetails($this->details);
     }
 
+    public function detailsAsAmountLimitation(){
+        return new AmountLimitation($this->details);
+    }
+
+    public function getCurrency(){
+        if($this->category === static::CATEGORY_CRYPTO){
+            return strtoupper($this->type);
+        }
+        return strtoupper($this->detailsAsCurrencyDetails()->currency);
+    }
+
+    public function getAddress(): string{
+        if($this->category === static::CATEGORY_MOBILE){
+            return $this->detailsAsMobile()->address;
+        }
+        else if($this->category === Method::CATEGORY_BANKING || $this->category === Method::CATEGORY_TRANSFER){
+            return $this->details->account;
+        }
+        return "";
+    }
+
+    public function getCountry(){
+        if(isset($this->details->country)){
+            return $this->details->country;
+        }
+        return null;
+    }
+
+    public static function typeFromFedaMode(string $mode){
+        if($mode === "mtn"){
+            return static::TYPE_MTN;
+        }
+        else if($mode === "moov"){
+            return static::TYPE_MOOV;
+        }
+        return "";
+    }
 }
 
 ?>

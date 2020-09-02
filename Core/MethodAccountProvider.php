@@ -6,16 +6,7 @@ use Models\MethodAccount;
 use PDO;
 use stdClass;
 
-class MethodAccountProvider{
-    public $client;
-
-    public const COINBASE = "coinbase";
-    public const FEDAPAY = "fedapay";
-    public const PERFECT_MONEY = "perfectmoney";
-
-    public function __construct(PDO $client){
-        $this->client = $client;
-    }
+class MethodAccountProvider extends Provider{
 
     public function createAccount(stdClass $data): string{
         if(isset($data->type) && isset($data->details)){

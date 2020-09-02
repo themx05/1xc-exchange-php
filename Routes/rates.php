@@ -1,5 +1,6 @@
 <?php
 
+use Core\ConversionProvider;
 use Core\FixedRatesProvider;
 use Routing\Request;
 use Routing\Response;
@@ -13,10 +14,10 @@ $rateRouter = new Router();
 
 $rateRouter->get("/:source/:dest",function(Request $req, Response $res){
 
-    $fixedProvider = new FixedRatesProvider($req->getOption('storage'));
-
     $source = $req->getParam('source');
     $dest = $req->getParam('dest');
+
+    /*$fixedProvider = new FixedRatesProvider($req->getOption('storage'));
 
     if($source === $dest){
         $response = [
@@ -41,6 +42,7 @@ $rateRouter->get("/:source/:dest",function(Request $req, Response $res){
         ];
         return $res->json(buildSuccess($response));
     }
+    */
 
     $converter = new ConversionProvider();
     $data = $converter->convert([
@@ -49,8 +51,8 @@ $rateRouter->get("/:source/:dest",function(Request $req, Response $res){
         'amount' =>  1
     ]);
     
-    if($data !== -1){
-        if($data['rate'] > 0){
+    if($data !== null){
+        if($data->rate > 0){
             return $res->json(buildSuccess($data));
         }
     }

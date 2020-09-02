@@ -2,6 +2,7 @@
 
 use Core\BalanceProvider;
 use Core\MethodProvider;
+use Models\Method;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
@@ -24,7 +25,7 @@ $methodRouter->get("/:method",function (Request $req, Response $res){
     $methodId = $req->getParam('method');
     $methodProvider = new MethodProvider($req->getOption('storage'));
     $method = $methodProvider->getMethodById($methodId);
-    if(isset($method)){
+    if($method !== null){
         $res->json(buildSuccess($method));
         return;
     }
@@ -63,8 +64,8 @@ $methodRouter->post("/", function(Request $req, Response $res) {
 
 $methodRouter->patch("/:id",function(Request $req, Response $res){
     $mid = $req->getParam('id');
-    $method = json_decode(json_encode($req->getOption('body')),true);
-    $method['id'] = $mid;
+    $method = new Method(json_decode(json_encode($req->getOption('body')),true));
+    $method->id = $mid;
     $client = $req->getOption('storage');
     if($req->getOption('isAdmin')){
         if($client instanceof PDO){

@@ -1,6 +1,7 @@
 <?php
 
 use Core\SystemProperties;
+use Models\SystemProps;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
@@ -11,7 +12,7 @@ $systemPropsRouter->get("/",function(Request $req, Response $res){
     $provider = new SystemProperties($req->getOption('storage'));
     $props = $provider->getSystemProperties();
     
-    if($props){
+    if($props !== null){
         return $res->json(buildSuccess($props));
     }
     return $res->json(buildErrors());
@@ -20,7 +21,8 @@ $systemPropsRouter->get("/",function(Request $req, Response $res){
 $systemPropsRouter->patch("/",function(Request $req, Response $res){
     $provider = new SystemProperties($req->getOption('storage'));
     $data = $req->getOption('body');
-    $props = $provider->updateSystemProperties(json_decode(json_encode($data), true));
+    $newProps = new SystemProps($data);
+    $props = $provider->updateSystemProperties($newProps);
     
     if($props){
         return $res->json(buildSuccess(true));

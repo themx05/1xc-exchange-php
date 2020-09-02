@@ -9,6 +9,7 @@ namespace Models{
         public string $alias;
         public string $passwordHash;
         public int $createdAt;
+        public int $updatedAt;
         public bool $isRoot = false;
     }
 }

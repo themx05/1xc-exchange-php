@@ -6,12 +6,7 @@ use Models\Method;
 use PDO;
 use stdClass;
 
-class MethodProvider{
-    public $client;
-
-    public function __construct(PDO $client){
-        $this->client = $client;
-    }
+class MethodProvider extends Provider{
 
     public function getMethods(): array{
         $query = "SELECT * FROM SupportedMethods";

@@ -9,6 +9,7 @@ class Transaction extends Money{
     public string $source;
     public string $dest;
     public int $createdAt;
+    public int $validatedAt;
     public int $timestamp;
     public string $status;
 

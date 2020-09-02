@@ -6,13 +6,7 @@ use Models\SystemAdmin;
 use PDO;
 use stdClass;
 
-class SystemAdminProvider{
-
-    public $client;
-
-    public function __construct(PDO $client){
-        $this->client = $client;
-    }
+class SystemAdminProvider extends Provider{
 
     public function getAdminById(string $id){
         $query = "SELECT * FROM Admins WHERE id = ?";
@@ -54,7 +48,7 @@ class SystemAdminProvider{
     }
 
     public function getRootAdmin(){
-        $query = "SELECT * FROM Admins";
+        $query = "SELECT * FROM Admins where JSON_EXTRACT(data,'$.isRoot') = true";
         $stmt = $this->client->query($query);
         if($stmt->rowCount() > 0){
             $admin = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -68,22 +62,28 @@ class SystemAdminProvider{
     }
 
     public function createAdmin(stdClass $data = null){
-        if(isset($data->alias) && isset($data->password) && isset($data->firstname) && isset($data->lastname) && isset($data->gender)){
+        if(isset($data->alias) && isset($data->password) && isset($data->firstName) && isset($data->lastName) && isset($data->gender)){
             $query = "INSERT INTO Admins (id, data) VALUES (?, ?)";
             $stmt = $this->client->prepare($query);
 
             $id = generateHash();
+            $data->id = $id;
             $data->firstName = protectString($data->firstName);
             $data->lastName = protectString($data->lastName);
             $data->passwordHash = $this->hashPassword($data->password);
+            $data->gender = in_array($data->gender, ['male','female']) ? $data->gender : 'male';
+
+            $root = $this->getRootAdmin();
+            if($root !== null){
+                $data->isRoot = false;
+            }
+            else{
+                $data->isRoot = true;
+            }
             if(
                 $stmt->execute([
                     $id,
-                    protectString($data->firstname),
-                    protectString($data->lastname),
-                    in_array($data->gender, ['male','female']) ? $data->gender : 'male',
-                    protectString($data->alias),
-                    $
+                    json_encode($data)
                 ])
             ){
                 return $id;
@@ -92,35 +92,24 @@ class SystemAdminProvider{
         return "";
     }
 
-    public function updateProfile(string $id, stdClass $data){
-        if(isset($data->firstName) && isset($data->lastName) && isset($data->gender)){
-            $update_query = "UPDATE Admins SET firstName = ?, lastName = ?, gender = ? WHERE id = ?";
+    public function updateProfile(SystemAdmin $data){
+        if(isset($data->id) && isset($data->firstName) && isset($data->lastName) && isset($data->gender)){
+            $update_query = "UPDATE Admins SET data = ? WHERE id = ?";
             $update_stmt = $this->client->prepare($update_query);
-
-            if($update_stmt->execute([$data->firstName, $data->lastName, $data->gender, $id])){
+            if($update_stmt->execute([\json_encode($data), $data->id])){
                 return true;
             }
         }
         return false;
     }
 
-    public function updatePassword(string $id, stdClass $data){
-        if(isset($data->alias) &&  isset($data->lastPassword) && isset($data->newPassword)){
-            $select_admin_query = "SELECT * FROM Admins WHERE id = ? AND passwordHash = ?";
-            $select_admin_stmt = $this->client->prepare($select_admin_query);
-            if($select_admin_stmt->execute([$id, $this->hashPassword($data->lastPassword)]) && $select_admin_stmt->rowCount() > 0) {
-                $admin_data = $select_admin_stmt->fetch(PDO::FETCH_OBJ);
-                $admin_data->alias = $data->alias;
-                $admin_data->passwordHash = $this->hashPassword($data->newPassword);
-
-                $update_query = "UPDATE Admins SET alias = ?, passwordHash = ? WHERE id = ?";
-
-                $update_stmt = $this->client->prepare($update_query);
-
-                if($update_stmt->execute([$admin_data->alias, $admin_data->passwordHash, $admin_data->id])){
-                    return true;
-                }
-
+    public function updatePassword(SystemAdmin $data){
+        if(isset($data->id) && isset($data->alias) &&  isset($data->passwordHash)){
+            $data->passwordHash = $this->hashPassword($data->passwordHash);
+            $update_query = "UPDATE Admins SET data = ? WHERE id = ?";
+            $update_stmt = $this->client->prepare($update_query);
+            if($update_stmt->execute([\json_encode($data), $data->id])){
+                return true;
             }
         }
         return false;

@@ -2,6 +2,7 @@
 
 namespace Core;
 
+use Models\Ticket;
 use PDO;
 
 class TicketProvider{
@@ -14,18 +15,16 @@ class TicketProvider{
     public function createTicket(array $ticket){
         $insert_query = "INSERT INTO Tickets(id,data) values(?,?)";
         $stmt = $this->client->prepare($insert_query);
-
-        $id = generateHash();
-        $ticket['id'] = $id;
+        $ticket['id'] = generateHash();
         $ticket['rate'] = doubleval($ticket['rate']);
         $ticket['amount'] = doubleval($ticket['amount']);
         $ticket['emittedAt'] = time();
 
         if($stmt->execute([
-            $id,
+            $ticket['id'],
             \json_encode($ticket)
         ])){
-            return $id;
+            return $ticket['id'];
         }
         return '';
     }
@@ -33,32 +32,28 @@ class TicketProvider{
     public function getTickets(){
         $query = "SELECT * FROM Tickets ORDER BY JSON_EXTRACT(data,'$.emittedAt') DESC";
         $stmt = $this->client->query($query);
-        if($stmt){
-            $rows = [];
+        $rows = [];
+        if($stmt && $stmt->rowCount() > 0){
             $row = null;
-            while(($row = $stmt->fetch(PDO::FETCH_ASSOC)) != false){
-                $row['data'] = json_decode($row['data'],true);
-                array_push($rows, $row['data']);
+            while(($row = $stmt->fetch(PDO::FETCH_ASSOC))){
+                array_push($rows, new Ticket(json_decode($row['data'])));
             }
-            return $rows;
         }
-        return null;
+        return $rows;
     }
 
     public function getTicketsByUser(string $userId){
-        $query = "SELECT * FROM Tickets WHERE userId = ? ORDER BY JSON_EXTRACT(data,'$.emissionDate') DESC";
+        $query = "SELECT * FROM Tickets WHERE JSON_EXTRACT(data,'$.userId') = ? ORDER BY JSON_EXTRACT(data,'$.emissionDate') DESC";
         $stmt = $this->client->prepare($query);
+        $rows = [];
         if($stmt->execute([$userId])){
-            $rows = [];
             $row = null;
-            while(($row = $stmt->fetch(PDO::FETCH_ASSOC)) != false){
-                $row['data'] = json_decode($row['data'],true);
-                array_push($rows, $row['data']);
+            while(($row = $stmt->fetch(PDO::FETCH_ASSOC))){
+                array_push($rows, new Ticket(json_decode($row['data'])));
             }
-            return $rows;
         }
     
-        return null;
+        return $rows;
     }
     
     public function getTicketById(string $ticketId){
@@ -66,7 +61,7 @@ class TicketProvider{
         $stmt = $this->client->prepare($query);
         if($stmt->execute([$ticketId]) && $stmt->rowCount() > 0){
             $row = $stmt->fetch(PDO::FETCH_ASSOC);
-            return json_decode($row['data'],true);
+            return new Ticket(json_decode($row['data']));
         }
     
         return null;
@@ -88,16 +83,22 @@ class TicketProvider{
         $this->client->beginTransaction();
         $expectedPaymentProvider = new ExpectedPaymentProvider($this->client);
         $expected_payment = $expectedPaymentProvider->getExpectedPaymentByTicketId($ticketId);
-
+ 
         if(isset($expected_payment)){
-            $expectedPaymentProvider->deleteExpectedPayment($expected_payment['id']);
+            $expectedPaymentProvider->deleteExpectedPayment($expected_payment->id);
         }
-        $abort_query = "UPDATE Tickets SET data = JSON_SET(data,'$.status', 'cancelled'), cancelledAt=NOW() WHERE id = '$ticketId'";
-        if($this->client->query($abort_query)){
-            $this->client->commit();
-            return true;
+        $ticket = $this->getTicketById($ticketId);
+        if($ticket !== null){
+            $ticket->status = Ticket::STATUS_CANCELLED;
+            $ticket->cancelledAt = time();
+            $abort_query = "UPDATE Tickets SET data = ? WHERE id = '$ticketId'";
+            $stmt = $this->client->prepare($abort_query);
+            if($this->client->query($abort_query)){
+                $this->client->commit();
+                return true;
+            }
+            $this->client->rollBack();
         }
-        $this->client->rollBack();
         return false;
     } 
 }

@@ -12,12 +12,7 @@ use Models\Ticket;
 use Models\User;
 use PDO;
 
-class ExpectedPaymentProvider{
-    public $client;
-
-    public function __construct(PDO $client){
-        $this->client = $client;
-    }
+class ExpectedPaymentProvider extends Provider{
 
     public function getExpectedPaymentByTicketId(string $id){
         $expectation_query = "`SELECT data FROM ExpectedPayments WHERE JSON_EXTRACT(data,'$.ticketId') = '$id'`";
