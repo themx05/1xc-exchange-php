@@ -11,6 +11,7 @@ use Models\Wallet;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils;
 
 $walletRouter = new Router();
 
@@ -22,7 +23,7 @@ $walletRouter->get("/confirm/:method/:userId", function(Request $req, Response $
     $userId = $req->getParam('userId');
 
     if($method !== Method::CATEGORY_MOBILE){
-        return $res->json(buildErrors());
+        return $res->json(Utils::buildErrors());
     }
     
     $client = $req->getOption('storage');
@@ -78,7 +79,7 @@ $walletRouter->get("/confirm/:method/:userId", function(Request $req, Response $
         }
     }
 
-    return $res->status(403)->json(buildErrors());
+    return $res->status(403)->json(Utils::buildErrors());
 });
 
 $walletRouter->get("/create/:userId", function(Request $req, Response $res){
@@ -93,7 +94,7 @@ $walletRouter->get("/create/:userId", function(Request $req, Response $res){
     $user = $userProvider->getProfileById($req->getParam('userId'));
 
     if($client instanceof PDO){
-        if($user !== null && $user->isMerchant === 1){
+        if($user !== null && $user->isMerchant){
             $logger->info("User is a partner");
             if($fees->amount === 0){ /// USER CAN ONLY CREATE A BUSINESS WALLET WHEN IT IS FREE
                 $logger->info("Creation fees are 0.");
@@ -127,31 +128,31 @@ $walletRouter->get("/create/:userId", function(Request $req, Response $res){
             }
         }
     }
-    return $res->status(403)->json(buildErrors());
+    return $res->status(403)->json(Utils::buildErrors());
 });
 
 $walletRouter->global(function(Request $req, Response $res, Closure $next){
     if($req->getOption('connected')){
         return $next();
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $walletRouter->get("/", function(Request $req, Response $res){
     $walletProvider = new WalletProvider($req->getOption('storage'));
     if($req->getOption('isAdmin')){
         $wallets = $walletProvider->getWallets();
-        return $res->json(buildSuccess($wallets));
+        return $res->json(Utils::buildSuccess($wallets));
     }else{
         $wallets =  $walletProvider->getWalletsByUser($req->getOption('user')['id']);
-        return $res->json(buildSuccess($wallets));
+        return $res->json(Utils::buildSuccess($wallets));
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $walletRouter->get("/fee", function(Request $req, Response $res){
     $systemProvider = new SystemProperties($req->getOption('storage'));
-    return $res->json(buildSuccess($systemProvider->getBusinessWalletFee()));
+    return $res->json(Utils::buildSuccess($systemProvider->getBusinessWalletFee()));
 });
 
 $walletRouter->get("/payment-link", function(Request $req, Response $res){
@@ -181,9 +182,9 @@ $walletRouter->get("/payment-link", function(Request $req, Response $res){
             ]
         ]);
         $paymentUrl = $fedaTrans->generateToken()->url;
-        return $res->json(buildSuccess($paymentUrl));
+        return $res->json(Utils::buildSuccess($paymentUrl));
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleWallet = new Router();
@@ -193,7 +194,7 @@ $singleWallet->get("/",function(Request $req, Response $res){
     $walletProvider = new WalletProvider($req->getOption('storage'));
     $wallet = $walletProvider->getWalletById($req->getParam('wallet'));
     if($wallet !== null){
-        return $res->json(buildSuccess($wallet));
+        return $res->json(Utils::buildSuccess($wallet));
     }
 });
 
@@ -203,9 +204,9 @@ $singleWallet->get("/history", function(Request $req, Response $res){
     $history = $walletProvider->getHistoriesByWallet($walletId);
 
     if(isset($history)){
-        return $res->json(buildSuccess($history));
+        return $res->json(Utils::buildSuccess($history));
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
     /// Get wallet history
 });
 
@@ -223,14 +224,14 @@ $singleWallet->post("/credit", function(Request $req, Response $res){
                     $depositId = $walletProvider->deposit($walletId, $data->amount, $wallet->balance->currency,$data->memo);
                     if(isset($depositId)){
                         $client->commit();
-                        return $res->json(buildSuccess($depositId));
+                        return $res->json(Utils::buildSuccess($depositId));
                     }
                     $client->rollBack();
                 }
             }
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleWallet->post("/debit", function(Request $req, Response $res){
@@ -249,7 +250,7 @@ $singleWallet->post("/debit", function(Request $req, Response $res){
                         $depositId = $walletProvider->withdraw($walletId, $data->amount, $wallet->balance->currency,$data->memo);
                         if(isset($depositId)){
                             $client->commit();
-                            return $res->json(buildSuccess($depositId));
+                            return $res->json(Utils::buildSuccess($depositId));
                         }
                         $client->rollBack();
                     }
@@ -257,7 +258,7 @@ $singleWallet->post("/debit", function(Request $req, Response $res){
             }
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $walletRouter->router("/:wallet", $singleWallet);

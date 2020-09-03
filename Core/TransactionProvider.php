@@ -5,6 +5,8 @@ namespace Core;
 use Models\Ticket;
 use Models\Transaction;
 use PDO;
+use Utils\Utils;
+
 class TransactionProvider{
     public $client;
 
@@ -30,7 +32,7 @@ class TransactionProvider{
             return "";
         }
         $trans = [
-            'id' => generateHash(),
+            'id' => Utils::generateHash(),
             'ticketId' => $ticket->id,
             'variant' => $variant,
             'type' => $payment->type,

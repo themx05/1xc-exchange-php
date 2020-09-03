@@ -9,9 +9,11 @@ use Core\UserProvider;
 use Core\Utils;
 use Core\WalletProvider;
 use Models\Method;
+use Models\WalletHistory;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils as UtilsUtils;
 
 $paymentRouter = new Router();
 
@@ -72,7 +74,7 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                                 if(!empty($history)){
                                     $logger->info("Withdrawal processed");
                                     $confirmation_data = new ConfirmationData(
-                                        generateHash(),
+                                        UtilsUtils::generateHash(),
                                         $method,
                                         $paymentId,
                                         $expectedPayment->amount,
@@ -86,30 +88,30 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                                 else{
                                     $logger->error("Failed to withdraw the specified amount");
                                     $client->rollBack();
-                                    return $res->json(buildErrors());
+                                    return $res->json(UtilsUtils::buildErrors());
                                 }
                             }
                             else{
                                 $logger->error("The user wanted to fake this request. He doesn't own this wallet.");
                                 $client->rollBack();
-                                return $res->json(buildErrors());
+                                return $res->json(UtilsUtils::buildErrors());
                             }
                         }
                         else{
                             $logger->error("The user wanted to fake this request. The wallet he specified is invalid.");
                             $client->rollBack();
-                            return $res->json(buildErrors());
+                            return $res->json(UtilsUtils::buildErrors());
                         }
                     }
                     else{
                         $client->rollBack();
-                        return $res->json(buildErrors());
+                        return $res->json(UtilsUtils::buildErrors());
                     }
                 }
                 else{
                     $logger->error("The user wanted to fake this request. His details doesn't anymore exist in our system.");
                     $client->rollBack();
-                    return $res->json(buildErrors());
+                    return $res->json(UtilsUtils::buildErrors());
                 }
             }
     
@@ -147,18 +149,18 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                                     $logger->info("Saving payout transaction.");
                                     $out_tx = $transactionProvider->createOutTicketTransaction($ticket, $result);
                                     if(!empty($out_tx)){
-                                        if($ticket->enableCommission === 1){
+                                        if($ticket->enableCommission){
                                             $logger->info("Commission should be deposed to merchant's business wallet");
                                             $walletProvider = new WalletProvider($client);
                                             $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
                                             if($wallet !== null){
                                                 $emitterBonus = $ticket->getEmitterCommission();
                                                 $currency = $ticket->dest->getCurrency();
-                                                $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Commission {$ticket->getLabel()}", WalletProvider::TX_COMMISSION);
+                                                $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Commission {$ticket->getLabel()}", WalletHistory::TYPE_COMMISSION);
                                                 if(empty($history)){
                                                     $client->rollBack();
                                                     $logger->error("Failed to deposit commission");
-                                                    return $res->json(buildErrors(["Echec de depot de la commission"]));
+                                                    return $res->json(UtilsUtils::buildErrors(["Echec de depot de la commission"]));
                                                 }
                                             }
                                         }
@@ -175,7 +177,7 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                                         $logger->info("Redirected user to its activity page.");
                                         return $res->redirect('https://1xcrypto.net/account/activity');
                                     }else{
-                                        return $res->status(200)->json(buildSuccess(true));
+                                        return $res->status(200)->json(UtilsUtils::buildSuccess(true));
                                     }
                                 }
                             }
@@ -187,7 +189,7 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
         $client->rollBack();
 
     }
-    return $res->json(buildErrors());
+    return $res->json(UtilsUtils::buildErrors());
 });
 
 $paymentRouter->get("/:ticket", function(Request $req, Response $res){
@@ -196,9 +198,9 @@ $paymentRouter->get("/:ticket", function(Request $req, Response $res){
     $payment = $expectationProvider->getExpectedPaymentByTicketId($ticketId);
 
     if($payment !== null){
-        return $res->json(buildSuccess($payment));
+        return $res->json(UtilsUtils::buildSuccess($payment));
     }
-    return $res->json(buildErrors());
+    return $res->json(UtilsUtils::buildErrors());
 });
 
 global $application;

@@ -6,14 +6,15 @@ use Routing\Response;
 use Routing\Router;
 use \Firebase\JWT\JWT;
 use Models\User;
+use Utils\Utils;
 
 $adminRouter = new Router();
 
 $adminRouter->get("/signin", function(Request $req, Response $res){
     if($req->getOption('connected') && $req->getOption('isAdmin')){
-        return $res->json(buildSuccess(true));
+        return $res->json(Utils::buildSuccess(true));
     }
-    return $res->json(buildErrors([],['requireAuth' => true]));
+    return $res->json(Utils::buildErrors([],['requireAuth' => true]));
 });
 
 $adminRouter->post("/signin", function(Request $req, Response $res){
@@ -38,7 +39,7 @@ $adminRouter->post("/signin", function(Request $req, Response $res){
         setcookie('token', $token, [
             'expires' => time() + 86400 * 3
         ]);
-        return $res->json(buildSuccess($token));
+        return $res->json(Utils::buildSuccess($token));
         
     }else{
         $rootAdmin = $adminProvider->getRootAdmin();
@@ -68,27 +69,27 @@ $adminRouter->post("/signin", function(Request $req, Response $res){
                     setcookie('token', $token, [
                         'expires' => time() + 86400 * 3
                     ]);
-                    return $res->json(buildSuccess($token));
+                    return $res->json(Utils::buildSuccess($token));
                 }
             }
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $adminRouter->post("/signup", function(Request $req, Response $res){
     $data = $req->getOption('body');
 
     /// Route currently disabled.
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 
     $adminProvider = new SystemAdminProvider($req->getOption('storage'));
     $id = $adminProvider->createAdmin($data);
 
     if(!empty($id)){
-        return $res->json(buildSuccess());
+        return $res->json(Utils::buildSuccess());
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $adminRouter->global(function(Request $req, Response $res, Closure $next){
@@ -97,14 +98,14 @@ $adminRouter->global(function(Request $req, Response $res, Closure $next){
         $next();
     }
     else{
-        return $res->json(buildErrors([],['requireAuth' => true]));
+        return $res->json(Utils::buildErrors([],['requireAuth' => true]));
     }
 });
 
 $adminRouter->get("/", function(Request $req, Response $res){
     $adminProvider = new SystemAdminProvider($req->getOption('storage'));
     $admins = $adminProvider->getAdmins();
-    return $res->json(buildSuccess($admins));
+    return $res->json(Utils::buildSuccess($admins));
 });
 
 $adminRouter->get("/profile", function(Request $req, Response $res){
@@ -112,9 +113,9 @@ $adminRouter->get("/profile", function(Request $req, Response $res){
     $admin = $adminProvider->getAdminById($req->getOption('user')['id']);
 
     if($admin !== null){
-        return $res->json(buildSuccess($admin));
+        return $res->json(Utils::buildSuccess($admin));
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $adminRouter->patch("/profile",function(Request $req, Response $res){
@@ -124,16 +125,16 @@ $adminRouter->patch("/profile",function(Request $req, Response $res){
         $userId = $req->getOption('user')['id'];
         $admin = $adminProvider->getAdminById($userId);
         if($admin !==null){
-            $admin->firstName = protectString($data->firstName);
-            $admin->lastName = protectString($data->lastName);
+            $admin->firstName = Utils::protectString($data->firstName);
+            $admin->lastName = Utils::protectString($data->lastName);
             $admin->gender = User::isGenderValid($data->gender) ? $data->gender : User::GENDER_MALE;
         }
         $done = $adminProvider->updateProfile($admin);
         if($done){
-            return $res->json(buildSuccess($done));
+            return $res->json(Utils::buildSuccess($done));
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $adminRouter->patch("/credentials",function(Request $req, Response $res){
@@ -144,17 +145,17 @@ $adminRouter->patch("/credentials",function(Request $req, Response $res){
         $admin = $adminProvider->getAdminById($userId);
         if($admin !==null){
             if($admin->passwordHash !== $adminProvider->hashPassword($data->lastPassword)){
-                return $res->json(buildErrors(['lastPassword' => 'Wrong password']));
+                return $res->json(Utils::buildErrors(['lastPassword' => 'Wrong password']));
             }
             $admin->passwordHash = $data->newPassword;
             $admin->updatedAt = time();
         }
         $done = $adminProvider->updatePassword($admin);
         if($done){
-            return $res->json(buildSuccess());
+            return $res->json(Utils::buildSuccess());
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 global $application;

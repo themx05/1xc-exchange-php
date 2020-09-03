@@ -7,14 +7,9 @@ use Models\Wallet;
 use Models\WalletHistory;
 use PDO;
 use stdClass;
+use Utils\Utils;
 
 class WalletProvider extends Provider{
-    public const WALLET_BUSINESS = "business";
-    public const WALLET_STANDARD = "standard";
-    public const TX_COMMISSION = "commission";
-    public const TX_DEPOSIT = "deposit";
-    public const TX_WITHDRAW = "withdraw";
-    public const TX_NORMAL = "normal";
 
     /**
      * Generates signature of 1xc wallets.
@@ -43,7 +38,7 @@ class WalletProvider extends Provider{
     ){
         $query = "INSERT INTO RegistrationFeeTransaction(id, data) VALUES (?,?)";
         $stmt = $this->client->prepare($query);
-        $id = generateHash();
+        $id = Utils::generateHash();
         $data = [
             'id' => $id,
             'user' => $userId,
@@ -310,7 +305,7 @@ class WalletProvider extends Provider{
 
         if($wallet !== null){
             $data = [
-                'id' => generateHash(),
+                'id' => Utils::generateHash(),
                 'wallet' => $walletId,
                 'type' => $type,
                 'amount' => $amount,

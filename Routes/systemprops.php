@@ -5,6 +5,7 @@ use Models\SystemProps;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils;
 
 $systemPropsRouter = new Router();
 
@@ -13,9 +14,9 @@ $systemPropsRouter->get("/",function(Request $req, Response $res){
     $props = $provider->getSystemProperties();
     
     if($props !== null){
-        return $res->json(buildSuccess($props));
+        return $res->json(Utils::buildSuccess($props));
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $systemPropsRouter->patch("/",function(Request $req, Response $res){
@@ -25,9 +26,9 @@ $systemPropsRouter->patch("/",function(Request $req, Response $res){
     $props = $provider->updateSystemProperties($newProps);
     
     if($props){
-        return $res->json(buildSuccess(true));
+        return $res->json(Utils::buildSuccess(true));
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 global $application;

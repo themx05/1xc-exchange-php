@@ -5,6 +5,7 @@ namespace Core;
 use Models\BusinessProfile;
 use PDO;
 use stdClass;
+use Utils\Utils;
 
 class MerchantProvider extends Provider{
 
@@ -33,7 +34,7 @@ class MerchantProvider extends Provider{
         $data->status = 'pending';
 
         $query = "INSERT INTO MerchantProfile(id, data) VALUES(?,?)";
-        $id = generateHash();
+        $id = Utils::generateHash();
         $data->id = $id;
         $stmt = $this->client->prepare($query);
         if($stmt->execute([$id, json_encode($data)])){

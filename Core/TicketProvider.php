@@ -4,6 +4,7 @@ namespace Core;
 
 use Models\Ticket;
 use PDO;
+use Utils\Utils;
 
 class TicketProvider{
     public $client;
@@ -15,7 +16,7 @@ class TicketProvider{
     public function createTicket(array $ticket){
         $insert_query = "INSERT INTO Tickets(id,data) values(?,?)";
         $stmt = $this->client->prepare($insert_query);
-        $ticket['id'] = generateHash();
+        $ticket['id'] = Utils::generateHash();
         $ticket['rate'] = doubleval($ticket['rate']);
         $ticket['amount'] = doubleval($ticket['amount']);
         $ticket['emittedAt'] = time();

@@ -11,6 +11,8 @@ use Models\ExpectedPayment;
 use Models\Ticket;
 use Models\User;
 use PDO;
+use Utils\Coinbase\Coinbase;
+use Utils\Utils;
 
 class ExpectedPaymentProvider extends Provider{
 
@@ -46,7 +48,7 @@ class ExpectedPaymentProvider extends Provider{
 
     public function createExpectedPayment(User $user, Ticket $ticket){
         global $logger;
-        $paymentId = generateHash();
+        $paymentId = Utils::generateHash();
         $expectedAddress = "";
         $paymentUrl = "" ; /// Useful for fedapay links;
         $source = $ticket->source;
@@ -67,7 +69,7 @@ class ExpectedPaymentProvider extends Provider{
                 return "";
             }
 
-            $coinbaseUtils = new CoinbaseUtils($coinbase_account, $logger);
+            $coinbaseUtils = new Coinbase($coinbase_account, $logger);
             $wallets = $coinbaseUtils->getWalletsByCurrency($source_currency);
 
             $logger->info("Crypto: $source_currency ; Compatible wallets: ".json_encode($wallets));

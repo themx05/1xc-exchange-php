@@ -4,6 +4,7 @@ namespace Core;
 use Models\SystemProps;
 use PDO;
 use stdClass;
+use Utils\Utils;
 
 class SystemProperties extends Provider{
     
@@ -20,7 +21,7 @@ class SystemProperties extends Provider{
 
     public function save(stdClass $config){
         $stmt = $this->client->prepare("INSERT INTO SystemProps(id, data) VALUES(?,?)");
-        if($stmt->execute([generateHash(),json_encode($config)])){
+        if($stmt->execute([Utils::generateHash(),json_encode($config)])){
             return true;
         }
         return false;
@@ -41,7 +42,7 @@ class SystemProperties extends Provider{
                             'currency' => 'XOF'
                         ],
                         'authentication' => [
-                            'secret' => \randomString(64)
+                            'secret' => Utils::randomString(64)
                         ]
                     ]
                 )

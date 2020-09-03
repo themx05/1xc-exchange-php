@@ -7,6 +7,7 @@ use Core\FixedRatesProvider;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils;
 
 $fixedRouter = new Router();
 
@@ -14,18 +15,18 @@ $fixedRouter->global(function(Request $req, Response $res, Closure $next){
     /**
      * Disable access
      */
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
     
     if($req->getOption('isAdmin')){
         return $next();
     }
-    return $res->json(buildErrors([],['requireAuth' => true]));
+    return $res->json(Utils::buildErrors([],['requireAuth' => true]));
 });
 
 $fixedRouter->get("/", function(Request $req, Response $res){
     $fixedProvider = new FixedRatesProvider($req->getOption('storage'));
     $rates = $fixedProvider->getRates();
-    return $res->json(buildSuccess($rates));
+    return $res->json(Utils::buildSuccess($rates));
 });
 
 $fixedRouter->post("/", function(Request $req, Response $res){
@@ -49,10 +50,10 @@ $fixedRouter->post("/", function(Request $req, Response $res){
         );
 
         if(!empty($rateId)){
-            return $res->json(buildSuccess($rateId));
+            return $res->json(Utils::buildSuccess($rateId));
         }
     }
-    return $res->json(buildErrors(['Propriété manquante']));
+    return $res->json(Utils::buildErrors(['Propriété manquante']));
 });
 
 $fixedRouter->patch("/:id", function(Request $req, Response $res){
@@ -71,12 +72,11 @@ $fixedRouter->patch("/:id", function(Request $req, Response $res){
             floatval($body->fromAmount),
             floatval($body->toAmount)
         );
-
         if($done){
-            return $res->json(buildSuccess($rateId));
+            return $res->json(Utils::buildSuccess($rateId));
         }
     }
-    return $res->json(buildErrors(['Montant invalide']));
+    return $res->json(Utils::buildErrors(['Montant invalide']));
 });
 
 $fixedRouter->delete("/:id", function(Request $req, Response $res){
@@ -87,10 +87,10 @@ $fixedRouter->delete("/:id", function(Request $req, Response $res){
         $fixedProvider = new FixedRatesProvider($req->getOption('storage'));
         $done = $fixedProvider->removeFixedRate($rateId);
         if($done){
-            return $res->json(buildSuccess($done));
+            return $res->json(Utils::buildSuccess($done));
         }
     }
-    return $res->json(buildErrors(['Propriété invalide.']));
+    return $res->json(Utils::buildErrors(['Propriété invalide.']));
 });
 
 global $application;

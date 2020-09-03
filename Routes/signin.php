@@ -7,14 +7,15 @@ use Routing\Router;
 
 use \Firebase\JWT\JWT;
 use Models\User;
+use Utils\Utils;
 
 $signinRouter = new Router();
 
 $signinRouter->get("/", function(Request $req, Response $res){
     if($req->getOption('connected') && !$req->getOption('isAdmin')){
-        return $res->json(buildSuccess(['connected' => true]));
+        return $res->json(Utils::buildSuccess(['connected' => true]));
     }
-    return $res->json(buildErrors(["Vous n'etes pas connectés"]));
+    return $res->json(Utils::buildErrors(["Vous n'etes pas connectés"]));
 });
 
 $signinRouter->post("/",function(Request $req, Response $res){
@@ -41,17 +42,17 @@ $signinRouter->post("/",function(Request $req, Response $res){
                 setcookie('token',$token,[
                     'expires' => time() + 86400*3
                 ]);
-                return $res->json(buildSuccess($token));
+                return $res->json(Utils::buildSuccess($token));
             }
             else{
-                return $res->json(buildErrors(['default'=>"Votre profil n'est pas actif."], ['active' => false]));
+                return $res->json(Utils::buildErrors(['default'=>"Votre profil n'est pas actif."], ['active' => false]));
             }
         }
         else{
-            return $res->json(buildErrors(['default' => "Votre profil n'est pas vérifié."],['requireVerification' => true]));
+            return $res->json(Utils::buildErrors(['default' => "Votre profil n'est pas vérifié."],['requireVerification' => true]));
         }
     }
-    $res->status(401)->json(buildErrors(['default' => "Wrong credentials"]));
+    $res->status(401)->json(Utils::buildErrors(['default' => "Wrong credentials"]));
 });
 
 global $application;

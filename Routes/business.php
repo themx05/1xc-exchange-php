@@ -5,6 +5,7 @@ use Models\Document;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils;
 
 $businessRouter = new Router();
 
@@ -12,12 +13,12 @@ $businessRouter->global(function(Request $req, Response $res, Closure $next){
     if($req->getOption('connected')){
         return $next();
     }
-    return $res->json(buildErrors([],['requireAuth' => true]));
+    return $res->json(Utils::buildErrors([],['requireAuth' => true]));
 });
 
 $businessRouter->post("/register", function(Request $req, Response $res){
     if($req->getOption('isAdmin')){
-        return $res->json(buildErrors([],['requireAuth' => true]));
+        return $res->json(Utils::buildErrors([],['requireAuth' => true]));
     }
 
     $user = $req->getOption('user');
@@ -26,7 +27,7 @@ $businessRouter->post("/register", function(Request $req, Response $res){
     $stored = $merchantProvider->getBusinessProfileByUser($user['id']);
 
     if($stored !== null){
-        return $res->json(buildErrors(['default' => "Vous avez déja un profil business"]));
+        return $res->json(Utils::buildErrors(['default' => "Vous avez déja un profil business"]));
     }
     
     $upload_dir = $req->getOption('home')."/uploads";
@@ -36,47 +37,47 @@ $businessRouter->post("/register", function(Request $req, Response $res){
     }
 
     if(!isset($_POST['name'])){
-        return $res->json(buildErrors(['name' => 'Le nom du profil business est requis']));
+        return $res->json(Utils::buildErrors(['name' => 'Le nom du profil business est requis']));
     }
 
     if($merchantProvider->getProfileByName($_POST['name']) !== null){
-        return $res->json(buildErrors(['name' => 'Un profil business du meme nom existe deja']));
+        return $res->json(Utils::buildErrors(['name' => 'Un profil business du meme nom existe deja']));
     }
 
     if(!isset($_POST['country'])){
-        return $res->json(buildErrors(['country' => 'Le pays du partenaire doit etre mentionné']));
+        return $res->json(Utils::buildErrors(['country' => 'Le pays du partenaire doit etre mentionné']));
     }
 
     if(!isset($_POST['city'])){
-        return $res->json(buildErrors(['city' => 'La ville du partenaire doit etre mentionné']));
+        return $res->json(Utils::buildErrors(['city' => 'La ville du partenaire doit etre mentionné']));
     }
 
     if(!isset($_POST['phone'])){
-        return $res->json(buildErrors(['phone' => 'Un contact téléphonique du partenaire doit etre mentionné']));
+        return $res->json(Utils::buildErrors(['phone' => 'Un contact téléphonique du partenaire doit etre mentionné']));
     }
 
     if($merchantProvider->getProfileByPhone($_POST['phone']) !==null){
-        return $res->json(buildErrors(['phone' => 'Ce contact est deja utilisé par un partenaire']));
+        return $res->json(Utils::buildErrors(['phone' => 'Ce contact est deja utilisé par un partenaire']));
     }
 
     if(!isset($_POST['email'])){
-        return $res->json(buildErrors(['email' => "L'adresse electronique du partenaire doit etre mentionné email"]));
+        return $res->json(Utils::buildErrors(['email' => "L'adresse electronique du partenaire doit etre mentionné email"]));
     }
 
     if($merchantProvider->getProfileByEmail($_POST['email']) !== null){
-        return $res->json(buildErrors(['email' => 'Un profil business utilise deja cette adresse electronique']));
+        return $res->json(Utils::buildErrors(['email' => 'Un profil business utilise deja cette adresse electronique']));
     }
 
     if(!isset($_FILES['cni']) || empty($_FILES['cni']['tmp_name'])){
-        return $res->json(buildErrors(['cni' => 'Une image de la C.N.I du partenaire doit etre fournie.']));
+        return $res->json(Utils::buildErrors(['cni' => 'Une image de la C.N.I du partenaire doit etre fournie.']));
     }
 
     $business = [
         'name' => $_POST['name'],
         'country' => strtoupper($_POST['country']),
-        'city' => protectString($_POST['city']),
-        'phone' => protectString($_POST['phone']),
-        'email' => protectString($_POST['email']),
+        'city' => Utils::protectString($_POST['city']),
+        'phone' => Utils::protectString($_POST['phone']),
+        'email' => Utils::protectString($_POST['email']),
         'documents' => []
     ];
 
@@ -88,7 +89,7 @@ $businessRouter->post("/register", function(Request $req, Response $res){
 
     if(isset($_FILES['cni']) && !empty($_FILES['cni']['tmp_name'])){
         $cni = $_FILES['cni'];
-        $uploadName = generateHash();
+        $uploadName = Utils::generateHash();
         $ext = strtolower(end(explode(".",$cni['name'])));
         $uploadName = "$uploadName.$ext";
         if(in_array($ext,$allowed_extensions)){
@@ -100,16 +101,16 @@ $businessRouter->post("/register", function(Request $req, Response $res){
                 ]);
             }
             else{
-                return $res->json(buildErrors(['message' => 'Echec d\'enregistrement de votre C.N.I']));
+                return $res->json(Utils::buildErrors(['message' => 'Echec d\'enregistrement de votre C.N.I']));
             }
         }else{
-            return $res->json(buildErrors(['cni' => 'Le type de fichier soumis n\'est pas accepté']));
+            return $res->json(Utils::buildErrors(['cni' => 'Le type de fichier soumis n\'est pas accepté']));
         }
     }
 
     if(isset($_FILES['rc']) && !empty($_FILES['rc']['tmp_name'])){
         $rc = $_FILES['rc'];
-        $uploadName = generateHash();
+        $uploadName = Utils::generateHash();
         $ext = strtolower(end(explode(".",$rc['name'])));
         $uploadName = "$uploadName.$ext";
         if(in_array($ext,$allowed_extensions)){
@@ -121,17 +122,17 @@ $businessRouter->post("/register", function(Request $req, Response $res){
                 ]);
             }
             else{
-                return $res->json(buildErrors(['rc' => 'Echec d\'enregistrement de votre R.C']));
+                return $res->json(Utils::buildErrors(['rc' => 'Echec d\'enregistrement de votre R.C']));
             }
         }
         else{
-            return $res->json(buildErrors(['rc' => 'Le type fichier n\'est pas accepté']));
+            return $res->json(Utils::buildErrors(['rc' => 'Le type fichier n\'est pas accepté']));
         }
     }
 
     if(isset($_FILES['ifu']) && !empty($_FILES['ifu']['tmp_name'])){
         $ifu = $_FILES['ifu'];
-        $uploadName = generateHash();
+        $uploadName = Utils::generateHash();
         $ext = strtolower(end(explode(".",$ifu['name'])));
         $uploadName = "$uploadName.$ext";
         if(in_array($ext,$allowed_extensions)){
@@ -143,20 +144,20 @@ $businessRouter->post("/register", function(Request $req, Response $res){
                 ]);
             }
             else{
-                return $res->json(buildErrors(['ifu' => "Echec d'enregistrement de l'ifu"]));
+                return $res->json(Utils::buildErrors(['ifu' => "Echec d'enregistrement de l'ifu"]));
             }
         }
         else{
-            return $res->json(buildErrors(['ifu' => 'Le type de fichier n\'est ps accepté']));
+            return $res->json(Utils::buildErrors(['ifu' => 'Le type de fichier n\'est ps accepté']));
         }
     }
 
     $businessId = $merchantProvider->createBusinessProfile($user['id'], json_decode(json_encode($business)));
     if(!empty($businessId)){
-        return $res->json(buildSuccess($businessId));
+        return $res->json(Utils::buildSuccess($businessId));
     }
     else{
-        return $res->json(buildErrors([],['message' => 'failed to create business profile']));
+        return $res->json(Utils::buildErrors([],['message' => 'failed to create business profile']));
     }
 });
 
@@ -165,18 +166,18 @@ $businessRouter->get("/", function(Request $req, Response $res){
     
     if($req->getOption('isAdmin')){
         $profiles = $merchantProvider->getProfiles();
-        return $res->json(buildSuccess($profiles));
+        return $res->json(Utils::buildSuccess($profiles));
     }
     else {
         $user = $req->getOption('user');
         $profile = $merchantProvider->getBusinessProfileByUser($user['id']);
 
         if(isset($profile)){
-            return $res->json(buildSuccess($profile));
+            return $res->json(Utils::buildSuccess($profile));
         }
     }
 
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleBusiness = new Router();
@@ -189,10 +190,10 @@ $singleBusiness->get("/",function(Request $req, Response $res){
 
     if($profile !== null){
         if($req->getOption('isAdmin') || $profile->userId === $user['id']){
-            return $res->json(buildSuccess($profile));
+            return $res->json(Utils::buildSuccess($profile));
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleBusiness->get("/approve", function(Request $req, Response $res){
@@ -209,13 +210,13 @@ $singleBusiness->get("/approve", function(Request $req, Response $res){
                 $done = $merchantProvider->approveProfile($profile->id);
                 if($done){
                     $client->commit();
-                    return $res->json(buildSuccess($done));
+                    return $res->json(Utils::buildSuccess($done));
                 }
                 $client->rollBack();
             }
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleBusiness->patch("/documents/:docName/verified/:enable", function(Request $req, Response $res){
@@ -242,7 +243,7 @@ $singleBusiness->patch("/documents/:docName/verified/:enable", function(Request 
         $done = $merchantProvider->updateProfile($profile);
         if($done){
             $client->commit();
-            return $res->json(buildSuccess($done));
+            return $res->json(Utils::buildSuccess($done));
         }
         $client->rollBack();
     }
@@ -259,11 +260,11 @@ $singleBusiness->delete("/", function(Request $req, Response $res){
         if(isset($profile)){
             $done = $merchantProvider->deleteProfile($profile->id);
             if($done){
-                return $res->json(buildSuccess($done));
+                return $res->json(Utils::buildSuccess($done));
             }
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $businessRouter->router("/:business", $singleBusiness);

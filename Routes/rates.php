@@ -5,6 +5,7 @@ use Core\FixedRatesProvider;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils;
 
 $rateRouter = new Router();
 
@@ -53,10 +54,10 @@ $rateRouter->get("/:source/:dest",function(Request $req, Response $res){
     
     if($data !== null){
         if($data->rate > 0){
-            return $res->json(buildSuccess($data));
+            return $res->json(Utils::buildSuccess($data));
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 global $application;

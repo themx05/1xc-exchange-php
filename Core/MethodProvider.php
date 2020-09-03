@@ -5,6 +5,7 @@ namespace Core;
 use Models\Method;
 use PDO;
 use stdClass;
+use Utils\Utils;
 
 class MethodProvider extends Provider{
 
@@ -35,7 +36,7 @@ class MethodProvider extends Provider{
         $query = "INSERT INTO SupportedMethods (id,data) VALUES(?,?)";
         $stmt = $this->client->prepare($query);
         if(!isset($method['id'])){
-            $method['id'] = generateHash();
+            $method['id'] = Utils::generateHash();
         }
         $stmt->execute([$method['id'], json_encode($method)]);
     }

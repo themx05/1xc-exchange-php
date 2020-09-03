@@ -6,6 +6,7 @@ use FedaPay\Transaction;
 use Models\ExpectedPayment;
 use Models\Method;
 use PDO;
+use Utils\Utils as UtilsUtils;
 
 Class Utils{
     
@@ -21,7 +22,7 @@ Class Utils{
             isset($_POST['V2_HASH'])
         ){
             $v2_hash = $_POST['V2_HASH'];
-            $paymentId = protectString($_POST['PAYMENT_ID']);
+            $paymentId = UtilsUtils::protectString($_POST['PAYMENT_ID']);
             
             $methodAccountProvider = new MethodAccountProvider($client);
             $pm_account = $methodAccountProvider->getPerfectMoney(Method::TYPE_PERFECTMONEY);
@@ -36,14 +37,14 @@ Class Utils{
                     if($v2_hash === $computed_v2_hash){
                         /// This payment is authentic.
                         $confirmation = new ConfirmationData(
-                            generateHash(),
+                            UtilsUtils::generateHash(),
                             Method::TYPE_PERFECTMONEY,
-                            protectString($_POST['PAYMENT_ID']),
+                            UtilsUtils::protectString($_POST['PAYMENT_ID']),
                             doubleval($_POST['PAYMENT_AMOUNT']),
-                            protectString($_POST['PAYMENT_UNITS']),
-                            protectString($_POST['PAYER_ACCOUNT']),
-                            protectString($_POST['PAYEE_ACCOUNT']),
-                            protectString($_POST['PAYMENT_BATCH_NUM']),
+                            UtilsUtils::protectString($_POST['PAYMENT_UNITS']),
+                            UtilsUtils::protectString($_POST['PAYER_ACCOUNT']),
+                            UtilsUtils::protectString($_POST['PAYEE_ACCOUNT']),
+                            UtilsUtils::protectString($_POST['PAYMENT_BATCH_NUM']),
                             intval($_POST['TIMESTAMPGMT'])
                         );
     
@@ -68,7 +69,7 @@ Class Utils{
             $feda = $methodAccountProvider->getFedaPay();
     
             FedaPay::setEnvironment('live');
-            FedaPay::setApiKey($feda['details']['privateKey']);
+            FedaPay::setApiKey($feda->privateKey);
             $transaction = Transaction::retrieve($txId);
             if(
                 $transaction->status === "approved" && 
@@ -77,19 +78,9 @@ Class Utils{
                 $meta = $transaction->metadata;
                 $payment_number = $meta->paid_phone_number;
                 $number = $payment_number->number;
-    
-                $mode = "";
-                if($transaction->mode === "mtn"){
-                    $mode = Method::TYPE_MTN;
-                }
-                elseif($transaction->mode === "moov"){
-                    $mode = Method::TYPE_MOOV;
-                }else{
-                    $mode = $transaction->mode;
-                }
-    
+                $mode = Method::typeFromFedaMode($transaction->mode);
                 return new ConfirmationData(
-                    generateHash(),
+                    UtilsUtils::generateHash(),
                     $mode,
                     $paymentId,
                     floatval($transaction->amount),
@@ -100,10 +91,8 @@ Class Utils{
                     time()
                 );
             }
-    
         }
         return null;
     }
-    
 }
 ?>

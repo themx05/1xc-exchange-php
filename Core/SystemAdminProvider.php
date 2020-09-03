@@ -5,6 +5,7 @@ namespace Core;
 use Models\SystemAdmin;
 use PDO;
 use stdClass;
+use Utils\Utils;
 
 class SystemAdminProvider extends Provider{
 
@@ -66,10 +67,10 @@ class SystemAdminProvider extends Provider{
             $query = "INSERT INTO Admins (id, data) VALUES (?, ?)";
             $stmt = $this->client->prepare($query);
 
-            $id = generateHash();
+            $id = Utils::generateHash();
             $data->id = $id;
-            $data->firstName = protectString($data->firstName);
-            $data->lastName = protectString($data->lastName);
+            $data->firstName = Utils::protectString($data->firstName);
+            $data->lastName = Utils::protectString($data->lastName);
             $data->passwordHash = $this->hashPassword($data->password);
             $data->gender = in_array($data->gender, ['male','female']) ? $data->gender : 'male';
 

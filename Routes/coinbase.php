@@ -13,6 +13,7 @@ use Routing\Request;
 use Routing\Response;
 use Routing\Router;
 use Utils\Coinbase\Coinbase;
+use Utils\Utils;
 
 $coinbaseWebHookRouter = new Router();
 /**
@@ -97,7 +98,7 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
                 ){
                     $logger->info("Everything is okay. Creating confirmation data.");
                     $confirmationData = new ConfirmationData(
-                        generateHash(),
+                        Utils::generateHash(),
                         $real_transaction->amount->currency,
                         $expectation->id,
                         $real_transaction->amount->amount,
@@ -143,7 +144,7 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
                         if($expectationProvider->deleteExpectedPayment($expectation->id)){
                             $logger->info("Everything goes fine.");
                             $client->commit();
-                            return $res->json(buildSuccess(true));
+                            return $res->json(Utils::buildSuccess(true));
                         }
                     }
                 }
@@ -169,7 +170,7 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
                                     $update_ticket = $client->prepare("UPDATE Tickets SET data = ? WHERE id = ?");
                                     if($update_ticket->execute([json_encode($ticket), $ticket->id])){
                                         $client->commit();
-                                        return $res->json(buildSuccess(true));
+                                        return $res->json(Utils::buildSuccess(true));
                                     }
                                 }
                             }
@@ -182,7 +183,7 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
 
     $logger->info("Rolling back.");
     $client->rollBack();
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 global $application;

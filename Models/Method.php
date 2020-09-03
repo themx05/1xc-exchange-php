@@ -77,7 +77,7 @@ class Method{
         else if($mode === "moov"){
             return static::TYPE_MOOV;
         }
-        return "";
+        return $mode;
     }
 }
 

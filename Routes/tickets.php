@@ -16,6 +16,7 @@ use Models\WalletHistory;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils;
 
 $ticketRouter = new Router();
 
@@ -24,7 +25,7 @@ $ticketRouter->global(function (Request $req, Response $res, Closure $next){
         return $next();
     }
     else{
-        return $res->json(buildErrors([],['requireAuth'=>true]));
+        return $res->json(Utils::buildErrors([],['requireAuth'=>true]));
     }
 });
 
@@ -39,9 +40,9 @@ $ticketRouter->get("/", function(Request $req, Response $res){
     }
 
     if(isset($tickets)){
-        return $res->json(buildSuccess($tickets));
+        return $res->json(Utils::buildSuccess($tickets));
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $ticketRouter->post("/",function (Request $req, Response $res){
@@ -61,7 +62,7 @@ $ticketRouter->post("/",function (Request $req, Response $res){
 
         if(!isset($user)){
             $client->rollBack();
-            return $res->json(buildErrors());
+            return $res->json(Utils::buildErrors());
         }
         if(
             isset($data->source) && 
@@ -136,9 +137,9 @@ $ticketRouter->post("/",function (Request $req, Response $res){
                             if(isset($payment)){
                                 $logger->info("Expectation saved");
                                 $client->commit();
-                                return $res->json( buildSuccess([
+                                return $res->json(Utils::buildSuccess([
                                     'ticketId' => $ticket_done,
-                                    'approved' => $ticket['approved'],
+                                    'approved' => $ticket->allowed,
                                     'paymentId' => $paymentId
                                 ]));
                             }else{
@@ -164,7 +165,7 @@ $ticketRouter->post("/",function (Request $req, Response $res){
         $logger->info("Failed to create ticket");
         $client->rollBack();
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleTicket = new Router();
@@ -172,9 +173,9 @@ $singleTicket->get("/", function(Request $req, Response $res){
     $ticketProvider = new TicketProvider($req->getOption('storage'));
     $ticket = $ticketProvider->getTicketById($req->getParam('ticket'));
     if( $ticket!== null && ($req->getOption('isAdmin') || $req->getOption('user')['id'] === $ticket->userId)){
-        return $res->json(buildSuccess($ticket));
+        return $res->json(Utils::buildSuccess($ticket));
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleTicket->middleware("/:action",function (Request $req, Response $res, Closure $next){
@@ -184,7 +185,7 @@ $singleTicket->middleware("/:action",function (Request $req, Response $res, Clos
             return $next();
         }
         else{
-            return $res->json(buildErrors(['bad action']));
+            return $res->json(Utils::buildErrors(['bad action']));
         }
     }
     else{
@@ -192,7 +193,7 @@ $singleTicket->middleware("/:action",function (Request $req, Response $res, Clos
             return $next();
         }
     }
-    return $res->json(buildErrors([],['requireAuth' => true]));
+    return $res->json(Utils::buildErrors([],['requireAuth' => true]));
 });
 
 $singleTicket->get("/allow", function(Request $req, Response $res){
@@ -200,9 +201,9 @@ $singleTicket->get("/allow", function(Request $req, Response $res){
     $ticketId = $req->getParam('ticket');
     $done = $ticketProvider->approveTicket($ticketId);
     if($done){
-        return $res->json(buildSuccess());
+        return $res->json(Utils::buildSuccess());
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleTicket->get("/abort", function(Request $req, Response $res){
@@ -210,9 +211,9 @@ $singleTicket->get("/abort", function(Request $req, Response $res){
     $ticketId = $req->getParam('ticket');
     $done = $ticketProvider->abortTicket($ticketId);
     if($done){
-        return $res->json(buildSuccess());
+        return $res->json(Utils::buildSuccess());
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleTicket->get("/autopay", function(Request $req, Response $res){
@@ -235,7 +236,7 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
         $userProvider = new UserProvider($req->getOption('storage'));
         $customer = $userProvider->getProfileById($ticket->userId);
 
-        $gateway->setCustomer(json_decode(json_encode($customer)));
+        $gateway->setCustomer($customer);
         /// Bind Country to gateway
         if($ticket->dest->getCountry() !== null){
             $gateway->setCountry($ticket->dest->getCountry());
@@ -262,14 +263,14 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
                         $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Ticket {$ticket->id}", WalletHistory::TYPE_COMMISSION);
                         if(empty($history)){
                             $pdo->rollBack();
-                            return $res->json(buildErrors(["Failed to deposit commission"]));
+                            return $res->json(Utils::buildErrors(["Failed to deposit commission"]));
                         }
                     }
                 }
                 if(!empty($transactionId)){
                     $logger->info("Stored transaction");
                     $pdo->commit();
-                    return $res->json(buildSuccess([
+                    return $res->json(Utils::buildSuccess([
                         'done' => $payment_result->isDone,
                         'pending' => $payment_result->isPending
                     ]));
@@ -280,7 +281,7 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
         }
     }
     $logger->info("Things went wrong.");
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleTicket->post("/manual-pay", function(Request $req, Response $res){
@@ -294,24 +295,24 @@ $singleTicket->post("/manual-pay", function(Request $req, Response $res){
     $ticket = $ticketProvider->getTicketById($ticketId);
 
     if(empty($source)){
-        return $res->json(buildErrors(['source' => 'You didn\'t specify the source of the payment']));
+        return $res->json(Utils::buildErrors(['source' => 'You didn\'t specify the source of the payment']));
     }
 
     if(!isset($amount) || $amount < $ticket->amountWithoutFees()){
-        return $res->json(buildErrors(['amount' => 'The amount you paid should be equal to the amount to be paid']));
+        return $res->json(Utils::buildErrors(['amount' => 'The amount you paid should be equal to the amount to be paid']));
     }
 
     if(empty($source)){
-        return $res->json(buildErrors(['source' => 'You didn\'t specify the reference of the payment']));
+        return $res->json(Utils::buildErrors(['source' => 'You didn\'t specify the reference of the payment']));
     }
 
-    if($ticket !== null && $ticket->isConfirmed() && $ticket->allowed === 1){
+    if($ticket !== null && $ticket->isConfirmed() && $ticket->allowed){
         
         $userProvider = new UserProvider($req->getOption('storage'));
         $customer = $userProvider->getProfileById($ticket->userId);
 
         $payment_result = new ConfirmationData(
-            generateHash(),
+            Utils::generateHash(),
             $ticket->dest->type,
             "",
             $amount,
@@ -336,13 +337,13 @@ $singleTicket->post("/manual-pay", function(Request $req, Response $res){
                     $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Ticket {$ticket->id}", WalletHistory::TYPE_COMMISSION);
                     if(empty($history)){
                         $pdo->rollBack();
-                        return $res->json(buildErrors(["Failed to deposit commission"]));
+                        return $res->json(Utils::buildErrors(["Failed to deposit commission"]));
                     }
                 }
             }
             if(!empty($transactionId)){
                 $pdo->commit();
-                return $res->json(buildSuccess([
+                return $res->json(Utils::buildSuccess([
                     'done' => $payment_result->isDone,
                     'pending' => $payment_result->isPending
                 ]));
@@ -350,9 +351,7 @@ $singleTicket->post("/manual-pay", function(Request $req, Response $res){
             $pdo->rollBack();
         }
     }
-    
-    return $res->json(buildErrors());
-
+    return $res->json(Utils::buildErrors());
 });
 
 $ticketRouter->router("/:ticket", $singleTicket);

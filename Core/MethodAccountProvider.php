@@ -5,6 +5,7 @@ namespace Core;
 use Models\MethodAccount;
 use PDO;
 use stdClass;
+use Utils\Utils;
 
 class MethodAccountProvider extends Provider{
 
@@ -12,8 +13,7 @@ class MethodAccountProvider extends Provider{
         if(isset($data->type) && isset($data->details)){
             $insertion_query = "INSERT INTO MethodAccount(id, data) VALUES(?,?)";
             $insertion_stmt = $this->client->prepare($insertion_query);
-
-            $data->id = generateHash();
+            $data->id = Utils::generateHash();
             if($insertion_stmt->execute([$data->id, json_encode($data)])){
                 return $data->id;
             }

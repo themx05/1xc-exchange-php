@@ -4,6 +4,7 @@ use Core\UserProvider;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils;
 
 $registrationRouter = new Router();
 
@@ -31,7 +32,7 @@ $registrationRouter->post("/",function (Request $req, Response $res){
     }
 
     if(count($msg) > 0){
-        return $res->status(401)->json(buildErrors($msg));
+        return $res->status(401)->json(Utils::buildErrors($msg));
     }
 
     $userProvider = new UserProvider($req->getOption('storage'));
@@ -40,27 +41,27 @@ $registrationRouter->post("/",function (Request $req, Response $res){
     $data->firstName = ucfirst(strtolower($data->firstName));
 
     if($userProvider->getProfileByEmail($data->email) !== null){
-        return $res->json(buildErrors(['email' => 'A user already exists with the same email address.']));
+        return $res->json(Utils::buildErrors(['email' => 'A user already exists with the same email address.']));
     }
 
     $id = $userProvider->createProfile($data);
     if(!empty($id)){
-        return $res->json(buildSuccess([
+        return $res->json(Utils::buildSuccess([
             'message' => 'user created',
             'id' => $id,
             'requireVerification' => true
         ]));
     }
-    $res->json(buildErrors());
+    $res->json(Utils::buildErrors());
 });
 
 $registrationRouter->get("/:activationCode", function(Request $req, Response $res){
     $activationCode = $req->getParam('activationCode');
     $userProvider = new UserProvider($req->getOption('storage'));
     if($userProvider->activateProfile($activationCode)){
-        return $res->json(buildSuccess(true));
+        return $res->json(Utils::buildSuccess(true));
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 global $application;

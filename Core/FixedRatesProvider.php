@@ -6,17 +6,13 @@
 namespace Core;
 
 use PDO;
+use Utils\Utils;
 
-class FixedRatesProvider{
-    public $client;
-
-    public function __construct(PDO $client){
-        $this->client = $client;
-    }
+class FixedRatesProvider extends Provider{
 
     public function fixRate(string $from, float $fromAmount, string $to, string $toAmount){
         $data=[
-            'id' => generateHash(),
+            'id' => Utils::generateHash(),
             'from' => [
                 'amount' => $fromAmount,
                 'currency' => strtoupper($from)

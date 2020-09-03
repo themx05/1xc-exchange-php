@@ -1,10 +1,14 @@
 <?php
-    use PHPMailer\PHPMailer\PHPMailer;
-    use PHPMailer\PHPMailer\Exception;
-    use PHPMailer\PHPMailer\SMTP;
+
+namespace Utils;
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\SMTP;
 use Templar\Builder;
 
-function sendVerificationEmail(string $user, string $emailAddress, string $code): bool{
+class Emails{
+
+    public static function profileVerification(string $user, string $emailAddress, string $code): bool{
         global $email, $logger;
         
         $builder = new Builder(TEMPLATE_DIR."/email_validation.temp.html","fr");
@@ -36,7 +40,7 @@ function sendVerificationEmail(string $user, string $emailAddress, string $code)
         }
     }
 
-    function sendMaintenanceEmail(string $address):bool{
+    public static function maintenance(string $address):bool{
         global $email, $logger;
         
         $builder = new Builder(TEMPLATE_DIR."/switch_to_maintenance.html","fr");
@@ -52,7 +56,7 @@ function sendVerificationEmail(string $user, string $emailAddress, string $code)
             $mailer->Username = $email['user'];
             $mailer->Password = $email['password'];
             $mailer->addAddress($address);
-            $mailer->Subject = "Mise a niveau systeme";
+            $mailer->Subject = "Mise à niveau système";
             $mailer->msgHTML($builder->render()); /// Replace with template 
             $result = $mailer->send();
             $logger->info("Email sent: ".($result == true?1:0));
@@ -62,4 +66,6 @@ function sendVerificationEmail(string $user, string $emailAddress, string $code)
             return false;
         }
     }
+
+}
 ?>

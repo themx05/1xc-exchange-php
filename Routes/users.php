@@ -7,16 +7,14 @@ use Core\WalletProvider;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils;
 
 $userRouter = new Router();
 $userRouter->global(function(Request $req, Response $res, Closure $next){
     if($req->getOption('connected')){
         $next();
     }else{
-        $res->json([
-            'success' => false,
-            'requireAuth' => true
-        ]);
+        $res->json(Utils::buildErrors([],['requireAuth' => true]));
     }
 });
 
@@ -24,15 +22,15 @@ $userRouter->get("/",function(Request $req, Response $res){
     $userProvider = new UserProvider($req->getOption('storage'));
     if($req->getOption("isAdmin")){
         $profiles = $userProvider->getAllProfiles();
-        return $res->json(buildSuccess($profiles));
+        return $res->json(Utils::buildSuccess($profiles));
     }else{
         $profile = $userProvider->getProfileById($req->getOption('user')['id']);
         if(isset($profile)){
-            return $res->json(buildSuccess($profile));
+            return $res->json(Utils::buildSuccess($profile));
         }
     }
 
-    $res->json(buildErrors());
+    $res->json(Utils::buildErrors());
 });
 
 $userRouter->patch("/credentials", function(Request $req, Response $res){
@@ -42,16 +40,16 @@ $userRouter->patch("/credentials", function(Request $req, Response $res){
         $user = $userProvider->getProfileById($req->getOption('user')['id']);
         if($user !== null){
             if($user->passwordHash !== $userProvider->encryptPassword($data->lastPassword)){
-                return $res->json(buildErrors(['lastPassword' => 'Wrong password.']));
+                return $res->json(Utils::buildErrors(['lastPassword' => 'Wrong password.']));
             }
             $done = $userProvider->updateCredentials($user, $data);
             if($done){
-                return $res->json(buildSuccess());
+                return $res->json(Utils::buildSuccess());
             }
         }
     }
 
-    $res->json(buildErrors());
+    $res->json(Utils::buildErrors());
 });
 
 $singleUser = new Router();
@@ -59,14 +57,10 @@ $singleUser = new Router();
 $singleUser->get("/", function(Request $req,Response $res){
     $userProvider = new UserProvider($req->getOption('storage'));
     $profile = $userProvider->getProfileById($req->getParam('user'));
-
     if($profile !== null && ($profile->id === $req->getOption('user')['id'] || $req->getOption('isAdmin'))){
-        return $res->json(buildSuccess($profile));
+        return $res->json(Utils::buildSuccess($profile));
     }
-
-    $res->json([
-        'success' => false
-    ]);
+    $res->json(Utils::buildErrors());
 });
 
 $singleUser->get("/tickets", function(Request $req, Response $res){
@@ -75,10 +69,10 @@ $singleUser->get("/tickets", function(Request $req, Response $res){
         $ticketProvider = new TicketProvider($req->getOption('storage'));
         $tickets = $ticketProvider->getTicketsByUser($userId);
         if(isset($tickets)){
-            return $res->json(buildSuccess($tickets));
+            return $res->json(Utils::buildSuccess($tickets));
         }
     }
-    return $res->json(['success' => false]);
+    return $res->json(Utils::buildErrors());
 });
 
 $singleUser->get("/business", function(Request $req, Response $res){
@@ -87,10 +81,10 @@ $singleUser->get("/business", function(Request $req, Response $res){
         $merchantProvider = new MerchantProvider($req->getOption('storage'));
         $profile = $merchantProvider->getBusinessProfileByUser($userId);
         if($profile !==null){
-            return $res->json(buildSuccess($profile));
+            return $res->json(Utils::buildSuccess($profile));
         }
     }
-    return $res->json(buildErrors());
+    return $res->json(Utils::buildErrors());
 });
 
 $singleUser->get("/wallet", function(Request $req, Response $res){
@@ -99,10 +93,10 @@ $singleUser->get("/wallet", function(Request $req, Response $res){
         $walletProvider = new WalletProvider($req->getOption('storage'));
         $wallet =  $walletProvider->getMainUserWallet($userId);
         if($wallet !== null){
-            return $res->json(buildSuccess($wallet));
+            return $res->json(Utils::buildSuccess($wallet));
         }
     }
-    return $res->json(['success' => false]);
+    return $res->json(Utils::buildErrors());
 });
 
 $singleUser->get("/wallets", function(Request $req, Response $res){
@@ -110,9 +104,9 @@ $singleUser->get("/wallets", function(Request $req, Response $res){
     if($req->getOption('user')['id'] === $userId || $req->getOption('isAdmin')){
         $walletProvider = new WalletProvider($req->getOption('storage'));
         $wallets =  $walletProvider->getWalletsByUser($userId);
-        return $res->json(buildSuccess($wallets));
+        return $res->json(Utils::buildSuccess($wallets));
     }
-    return $res->json(['success' => false]);
+    return $res->json(Utils::buildErrors());
 });
 
 $singleUser->get("/:action", function(Request $req, Response $res){
@@ -128,10 +122,10 @@ $singleUser->get("/:action", function(Request $req, Response $res){
             $done = $userProvider->disableProfile($id);
         }
         if($done){
-            return $res->json(buildSuccess());
+            return $res->json(Utils::buildSuccess());
         }
     }
-    $res->json(buildErrors());
+    $res->json(Utils::buildErrors());
 });
 
 $userRouter->router("/:user", $singleUser);

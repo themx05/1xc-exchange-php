@@ -2,6 +2,8 @@
 
 namespace Core;
 
+use Utils\Utils;
+
 function exactRound(float $val){
     $rounded = round($val, PHP_ROUND_HALF_DOWN);
     if($rounded > $val){
@@ -110,7 +112,7 @@ class PerfectMoney{
 
         if(isset($ar['PAYMENT_BATCH_NUM']) & isset($ar['PAYMENT_ID'])){
             $data = new ConfirmationData(
-                generateHash(),
+                Utils::generateHash(),
                 "perfectmoney",
                 $ar['PAYMENT_ID'],
                 $spend->amount,

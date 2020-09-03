@@ -4,8 +4,9 @@ namespace Core;
 
 use Models\User;
 use PDO;
-use Provider;
 use stdClass;
+use Utils\Emails;
+use Utils\Utils;
 
 class UserProvider extends Provider{
 
@@ -21,7 +22,7 @@ class UserProvider extends Provider{
         $check_stmt = $this->client->prepare($check_query);
         if($check_stmt->rowCount() === 0){
             $user = [
-                'id' => generateHash(),
+                'id' => Utils::generateHash(),
                 'firstName' => $firstName,
                 'lastName' => $lastName,
                 'gender' => $gender,
@@ -40,12 +41,12 @@ class UserProvider extends Provider{
                     $this->logger->info("User created");
                 }
                 //Next step: Generate verification code
-                $code = generateVerificationCode();
+                $code = Utils::generateVerificationCode();
                 $query = "INSERT INTO AccountVerificationCode (accountId, code) VALUES(?,?)";
                 $codestmt = $this->client->prepare($query)->execute([$user['id'],$code]);
                 if($codestmt != null){
                     //Next step: send verification email
-                    if(sendVerificationEmail("$firstName $lastName", $email,$code)){
+                    if(Emails::profileVerification("$firstName $lastName", $email,$code)){
                         if($this->logger !== null){
                             $this->logger->info("Verification Email sent to email ".$email);
                         }

@@ -4,6 +4,7 @@ use Core\MethodAccountProvider;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
+use Utils\Utils;
 
 $methodAccountRouter = new Router();
 
@@ -11,24 +12,24 @@ $methodAccountRouter->global(function(Request $request, Response $response, Clos
     if($request->getOption('connected')){
         $next();
     }else{
-        $response->json(buildErrors([],['requireAuth' => true]));
+        $response->json(Utils::buildErrors([],['requireAuth' => true]));
     }
 });
 
 $methodAccountRouter->get("/", function(Request $request, Response $response){
     $methodProvider = new MethodAccountProvider($request->getOption('storage'));
     $methods = $methodProvider->getAccounts();
-    $response->json(buildSuccess($methods));
+    $response->json(Utils::buildSuccess($methods));
 });
 
 $methodAccountRouter->get("/:id", function(Request $request, Response $response){
     $methodProvider = new MethodAccountProvider($request->getOption('storage'));
     $method = $methodProvider->getAccountById($request->getParam('id'));
     if($method !== null){
-        $response->json(buildSuccess($method));
+        $response->json(Utils::buildSuccess($method));
     }
     else{
-        $response->status(401)->json(buildErrors(["Identifiant de compte invalide"]));
+        $response->status(401)->json(Utils::buildErrors(["Identifiant de compte invalide"]));
     }
 });
 
@@ -39,11 +40,11 @@ $methodAccountRouter->post("/", function(Request $request, Response $response){
         if(isset($data->type) && isset($data->details)){
             $hash = $methodProvider->createAccount($data);
             if(!empty($hash)){
-                return $response->json(buildSuccess($hash));
+                return $response->json(Utils::buildSuccess($hash));
             }
         }
     }
-    return $response->status(403)->json(buildErrors([]));
+    return $response->status(403)->json(Utils::buildErrors([]));
 });
 
 $methodAccountRouter->patch("/:id",function(Request $request, Response $response){
@@ -54,11 +55,11 @@ $methodAccountRouter->patch("/:id",function(Request $request, Response $response
         if(isset($data->type) && isset($data->details)){
             $done = $methodProvider->updateAccount($id,$data);
             if($done){
-                return $response->json(buildSuccess($done));
+                return $response->json(Utils::buildSuccess($done));
             }
         }   
     }
-    return $response->status(403)->json(buildErrors([]));
+    return $response->status(403)->json(Utils::buildErrors([]));
 });
 
 $methodAccountRouter->delete("/:id",function(Request $request, Response $response){
@@ -69,11 +70,11 @@ $methodAccountRouter->delete("/:id",function(Request $request, Response $respons
         if(isset($data->type) && isset($data->details)){
             $done = $methodProvider->deleteAccount($id);
             if($done){
-                return $response->json(buildSuccess($done));
+                return $response->json(Utils::buildSuccess($done));
             }
         }   
     }
-    return $response->json(buildErrors([]));
+    return $response->json(Utils::buildErrors([]));
 });
 
 global $application;

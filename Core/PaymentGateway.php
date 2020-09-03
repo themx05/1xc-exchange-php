@@ -16,6 +16,7 @@ use SendTransaction;
 use stdClass;
 use Utils\Coinbase\Coinbase;
 use Utils\Coinbase\SendTransaction as CoinbaseSendTransaction;
+use Utils\Utils;
 
 class PaymentGateway {
     /**
@@ -126,7 +127,7 @@ class PaymentGateway {
             // Transfer to internal account is done.
             // Let's return confirmation data
             $confirmation = new ConfirmationData(
-                generateHash(),
+                Utils::generateHash(),
                 $this->method,
                 $this->expectedPayment,
                 $this->amount,
@@ -177,7 +178,7 @@ class PaymentGateway {
                             return null;
                         }
                         $confirmation = new ConfirmationData(
-                            generateHash(),
+                            Utils::generateHash(),
                             $this->currency,
                             $this->expectedPayment,
                             $transaction->amount,
@@ -267,7 +268,7 @@ class PaymentGateway {
 
             if($fedaPayout->status === "sent"){
                 $confirmation = new ConfirmationData(
-                    generateHash(),
+                    Utils::generateHash(),
                     Method::TYPE_MTN,
                     $this->expectedPayment,
                     $fedaPayout->amount,
