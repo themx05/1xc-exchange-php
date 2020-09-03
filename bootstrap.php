@@ -1,10 +1,6 @@
 <?php
     require_once("./vendor/autoload.php");
-    include_once("./utils/config.php");
-    require_once("./utils/emails.php");
-    require_once("./utils/utils.php");
-    require_once("./utils/coinbase-utils.php");
-
+    const APP_BASE = __DIR__;
     function requireDirectory(string $directory){
         $content = scandir($directory);
         $exp = "(.*)\.php";

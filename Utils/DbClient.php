@@ -9,7 +9,7 @@ class DbClient{
         return DbClient::prepareInstance(Config::getDefaultDatabase());
     }
 
-    static function prepareInstance($database): PDO{
+    static function prepareInstance( array $database): PDO{
         $dsn = "mysql:host={$database['host']};dbname={$database['database']};";
         $pdo = new PDO($dsn,$database['username'],$database['password']);
         $pdo->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);

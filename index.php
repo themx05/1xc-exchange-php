@@ -1,17 +1,15 @@
 <?php
-require_once('./bootstrap.php');
+/*require_once('./bootstrap.php');
 
 use Core\Logger;
-use Core\MerchantProvider;
-use Core\MethodProvider;
-use Core\TicketProvider;
-use Core\UserProvider;
+
 use Models\Money;
 use Routing\App;
 use Routing\BodyParser;
 use Routing\CorsConfiguration;
 use Routing\Request;
 use Routing\Response;
+use Utils\Utils;
 
 define("TEMPLATE_DIR","./templates");
 define("CB_URL", "https://api.coinbase.com");
@@ -22,7 +20,7 @@ session_start();
 
 $logger = new Logger(__DIR__."/error_log");
 
-$client = getDatabaseInstance();
+$client = Utils::getDatabaseInstance();
 
 $application = new App();
 
@@ -58,7 +56,7 @@ $application->global(function(Request& $request, Response& $response, Closure $n
     $next();
 });
 // Inject Connected User informations
-$application->global(function(Request& $request, Response& $response, Closure $next){
+/*$application->global(function(Request& $request, Response& $response, Closure $next){
     if(isConnected()){
         $request->setOption("connected", true);
         $request->setOption("isAdmin", isUserAnAdmin());
@@ -79,13 +77,14 @@ $application->get("/logout", function (Request $req, Response $res){
     $res->json([
         'success' => true
     ]);
-});
+});*/
 
-includeDirectory("./routes");
+/*includeDirectory("./routes");
 
 $application->global(function (Request $req, Response $res){
     $res->json(['success' => false]);
 });
 
 $application->handle();
+*/
 ?>
