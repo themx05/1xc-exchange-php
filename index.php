@@ -20,7 +20,7 @@ $_SERVER['REQUEST_URI'] = "/".$_GET['route'];
 
 session_start();
 
-$logger = new Logger(__DIR__."/error_log");
+$logger = new Logger(__DIR__."/error.log");
 
 $client = getDatabaseInstance();
 
