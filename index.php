@@ -6,6 +6,7 @@ use Core\MerchantProvider;
 use Core\MethodProvider;
 use Core\TicketProvider;
 use Core\UserProvider;
+use PHPMailer\PHPMailer\PHPMailer;
 use Routing\App;
 use Routing\BodyParser;
 use Routing\CorsConfiguration;

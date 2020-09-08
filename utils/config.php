@@ -5,9 +5,9 @@
     $productionDatabase = [
         'host'=>'localhost',
         'port'=>3306,
-        'username'=>'xcrypton_bot',
-        'password'=>'3Zg5hTGKeM2P',
-        'database'=>'xcrypton_xcrypto'
+        'username'=>'xcrypto_bot',
+        'password'=>'M_Ywt~ua|:0kv1MJI^lu);6Ax#QNp!O)',
+        'database'=>'1xc_v1'
     ];
 
     $developmentDatabase = [
