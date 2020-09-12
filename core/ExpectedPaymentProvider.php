@@ -106,7 +106,7 @@ class ExpectedPaymentProvider{
                 $fedaTrans = Transaction::create([
                     'description' => "Paiement de {$ticket['amount']} $source_currency a 1xCrypto",
                     'amount' => $ticket['amount'],
-                    'callback_url' => "https://api.1xcrypto.net/payments/confirm/mobile/$paymentId",
+                    'callback_url' => "https://1xcrypto.net/api/payments/confirm/mobile/$paymentId",
                     'currency' => [
                         'iso' => $source_currency
                     ],
