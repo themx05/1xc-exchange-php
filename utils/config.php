@@ -20,8 +20,8 @@
 
     $email = [
         'user'=>"admin@1xcrypto.net",
-        'password' => 'bBWbw(UU5J#g',
-        'port' => '587'
+        'password' => 'johThei-theu1UZ1',
+        'port' => '465'
     ];
 
     define("FIXER_API_KEY",'9a6ef038aaace3eb009165d70392a10c');
