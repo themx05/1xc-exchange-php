@@ -10,7 +10,7 @@ use Utils\Utils;
 
 class UserProvider extends Provider{
 
-    public function (stdClass $data){
+    public function createProfile(stdClass $data){
         $email = htmlspecialchars($data->email);
         $firstName = $data->firstName;
         $lastName = $data->lastName;
