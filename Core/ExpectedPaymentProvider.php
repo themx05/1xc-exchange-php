@@ -1,10 +1,6 @@
 <?php
 namespace Core;
 
-use Coinbase\Wallet\Client;
-use Coinbase\Wallet\Configuration;
-use Coinbase\Wallet\Resource\Address;
-use CoinbaseUtils;
 use FedaPay\FedaPay;
 use FedaPay\Transaction;
 use Models\ExpectedPayment;

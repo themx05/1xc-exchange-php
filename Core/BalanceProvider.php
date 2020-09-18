@@ -9,10 +9,9 @@ use Models\Method;
 use PDO;
 use Utils\Coinbase\Coinbase;
 
-class BalanceProvider extends Provider{
+class BalanceProvider extends ServiceClient{
 
     public function getBalance(Method $method){
-        global $logger;
         $maProvider = new MethodAccountProvider($this->client);
         if($method->type === Method::TYPE_PERFECTMONEY){
             $pmSpecs = $maProvider->getPerfectMoney();
@@ -31,7 +30,7 @@ class BalanceProvider extends Provider{
         else if($method->category === Method::CATEGORY_CRYPTO){
             $currency = $method->getCurrency();
             $coinbaseSpecs = $maProvider->getCoinbase();
-            $coinbaseUtils = new Coinbase($coinbaseSpecs, $logger);
+            $coinbaseUtils = new Coinbase($coinbaseSpecs, $this->logger);
             $compatible_accounts = $coinbaseUtils->getWalletsByCurrency($currency);
 
             if(!empty($compatible_accounts)){

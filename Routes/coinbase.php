@@ -55,11 +55,11 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
     $client = $req->getOption('storage');
     $event = $req->getOption('body');
 
-    $accountProvider = new MethodAccountProvider($client);
+    $accountProvider = new MethodAccountProvider($logger);
     $transactionProvider = new TransactionProvider($client);
     $ticketProvider = new TicketProvider($client);
     $expectationProvider = new ExpectedPaymentProvider($client);
-    $userProvider = new UserProvider($client);
+    $userProvider = new UserProvider($logger);
 
     $coinbase_account = $accountProvider->getCoinbase();
     if($coinbase_account !== null){

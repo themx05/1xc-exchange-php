@@ -151,7 +151,7 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                                     if(!empty($out_tx)){
                                         if($ticket->enableCommission){
                                             $logger->info("Commission should be deposed to merchant's business wallet");
-                                            $walletProvider = new WalletProvider($client);
+                                            $walletProvider = new WalletProvider($logger);
                                             $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
                                             if($wallet !== null){
                                                 $emitterBonus = $ticket->getEmitterCommission();

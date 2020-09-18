@@ -1,7 +1,7 @@
 <?php
 
 use Core\ConfirmationData;
-use Core\ConversionProvider;
+use Core\ConversionService;
 use Core\ExpectedPaymentProvider;
 use Core\MethodProvider;
 use Core\PaymentGateway;
@@ -51,11 +51,11 @@ $ticketRouter->post("/",function (Request $req, Response $res){
     $logger->info("Data is ".json_encode($data));
     $client = $req->getOption('storage');
     if($client instanceof PDO){
-        $userProvider = new UserProvider($client);
-        $methodProvider = new MethodProvider($client);
+        $userProvider = new UserProvider($logger);
+        $methodProvider = new MethodProvider($logger);
         $ticketProvider = new TicketProvider($client);
         $expectationProvider = new ExpectedPaymentProvider($client);
-        $walletProvider = new WalletProvider($client);
+        $walletProvider = new WalletProvider($logger);
         $client->beginTransaction();
         
         $user = $userProvider->getProfileById($req->getOption('user')['id']);
@@ -89,12 +89,8 @@ $ticketRouter->post("/",function (Request $req, Response $res){
             $dest_currency = $destination->getCurrency();
 
             if($source_currency !== $dest_currency){
-                $conversionService = new ConversionProvider();
-                $rate = $conversionService->convert([
-                    'source' => $source_currency,
-                    'dest' => $dest_currency,
-                    'amount' => 1
-                ]);   
+                $conversionService = new ConversionService($logger);
+                $rate = $conversionService->convert($source_currency, $dest_currency);   
             }else{
                 $rate = new ExchangeRate();
                 $rate->source = $source_currency;
@@ -233,7 +229,7 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
             $req->getOption('storage')
         );
 
-        $userProvider = new UserProvider($req->getOption('storage'));
+        $userProvider = new UserProvider($logger);
         $customer = $userProvider->getProfileById($ticket->userId);
 
         $gateway->setCustomer($customer);
@@ -285,6 +281,7 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
 });
 
 $singleTicket->post("/manual-pay", function(Request $req, Response $res){
+    global $logger;
     $data = $req->getOption('body');
     $ticketId = $req->getParam('ticket');
     $amount = floatval($data->amount);
@@ -308,7 +305,7 @@ $singleTicket->post("/manual-pay", function(Request $req, Response $res){
 
     if($ticket !== null && $ticket->isConfirmed() && $ticket->allowed){
         
-        $userProvider = new UserProvider($req->getOption('storage'));
+        $userProvider = new UserProvider($logger);
         $customer = $userProvider->getProfileById($ticket->userId);
 
         $payment_result = new ConfirmationData(
@@ -329,7 +326,7 @@ $singleTicket->post("/manual-pay", function(Request $req, Response $res){
             $transactionProvider = new TransactionProvider($pdo);
             $transactionId = $transactionProvider->createOutTicketTransaction($ticket, $payment_result);
             if($ticket->enableCommission){
-                $walletProvider = new WalletProvider($pdo);
+                $walletProvider = new WalletProvider($logger);
                 $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
                 if($wallet !== null){
                     $emitterBonus = $ticket->getEmitterCommission();
