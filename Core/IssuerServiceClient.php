@@ -5,29 +5,34 @@ namespace Core;
 use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Psr7\Request;
-use Models\SystemAdmin;
+use Models\BusinessProfile;
+use PDO;
 use stdClass;
 use Utils\Config;
 use Utils\Utils;
 
-class SystemAdminProvider extends ServiceClient{
+class IssuerServiceClient extends ServiceClient{
 
-    public function getAdminById(string $id){
+    public function decode(string $token): stdClass{
         try{
-            $url = Config::apiUrl()."/admins/".$id;
+            $url = Config::apiUrl()."/issuer/decode";
             $meta = Config::metadata();
             $headers = [
                 'Service-Name' => $meta->name,
                 'Service-Signature' => $meta->signature,
+            ]; 
+            $req_body = [
+                'token' => $token
             ];
 
-            $request = new Request("GET", $url, $headers);
+            $request = new Request("POST", $url, $headers, json_encode($req_body));
+
             $guzzle = new Client();
             $response = $guzzle->send($request);
             $body = json_decode($response->getBody()->__toString());
             if($body->success){
-                $profile = new SystemAdmin($body->data);
-                return $profile;
+                $content = $body->data;
+                return $content;
             }
             return null;
         }
@@ -39,29 +44,30 @@ class SystemAdminProvider extends ServiceClient{
         }
     }
 
-    public function getAdminRoles(string $id): array{
+    public function sign(stdClass $data): string{
         try{
-            $url = Config::apiUrl()."/admins/".$id."/roles";
+            $url = Config::apiUrl()."/issuer/sign";
             $meta = Config::metadata();
             $headers = [
                 'Service-Name' => $meta->name,
                 'Service-Signature' => $meta->signature,
-            ];
+            ]; 
 
-            $request = new Request("GET", $url, $headers);
+            $request = new Request("POST", $url, $headers, json_encode($data));
+
             $guzzle = new Client();
             $response = $guzzle->send($request);
             $body = json_decode($response->getBody()->__toString());
             if($body->success){
                 return $body->data;
             }
-            return [];
+            return "";
         }
         catch(Exception $e){
             if($this->logger){
                 $this->logger->error($e->getMessage());
             }
-            return [];
+            return "";
         }
     }
 }

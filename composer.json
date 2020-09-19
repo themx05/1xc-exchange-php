@@ -17,6 +17,7 @@
         "symfony/polyfill-mbstring": "^1.15",
         "fedapay/fedapay-php": "^0.3.0",
         "firebase/php-jwt": "^5.2",
-        "guzzlehttp/guzzle": "^7.0"
+        "guzzlehttp/guzzle": "^7.0",
+        "predis/predis": "^1.1"
     }
 }

@@ -24,6 +24,10 @@ class Config{
     static function metadata(): stdClass{
         return static::readConfigurations()->metadata;
     }
+
+    static function redis(): stdClass{
+        return static::readConfigurations()->redis;
+    }
 }
 
 ?>

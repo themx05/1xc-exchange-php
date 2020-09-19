@@ -1,17 +1,20 @@
 <?php
 require_once('./bootstrap.php');
 
+use Core\IssuerServiceClient;
 use Core\Logger;
-
-use Models\Money;
+use Core\SystemAdminProvider;
+use Models\AdminAuth;
+use Models\ServiceAuth;
+use Models\UserAuth;
 use Routing\App;
 use Routing\BodyParser;
 use Routing\CorsConfiguration;
 use Routing\Request;
 use Routing\Response;
+use Utils\Config;
 use Utils\Utils;
 
-define("TEMPLATE_DIR","./templates");
 define("CB_URL", "https://api.coinbase.com");
 
 $_SERVER['REQUEST_URI'] = "/".$_GET['route'];
@@ -21,70 +24,101 @@ session_start();
 $logger = new Logger(__DIR__."/error_log");
 
 $client = Utils::getDatabaseInstance();
+$redisClient = new Predis\Client();
+
+$metadatas = Config::metadata();
+$key = "{$metadatas->name}.metadata";
+
+$redisClient->set($key, json_encode($metadatas));
+
 
 $application = new App();
 
 $cors = new CorsConfiguration();
 $cors->whiteListBasicMethods();
 $cors->whiteListMethods('GET','POST','PUT','PATCH','DELETE');
-$cors->whiteListOrigin("localhost", "http://192.168.43.153:3000", "http://localhost", "http://localhost:3000", "https://1xcrypto.net", "https://office.1xcrypto.net");
-$cors->whiteListheaders("Content-Type", "X-TOKEN");
-
-$application->setOption("home","../");
+$cors->whiteListOrigin("localhost", "http://localhost", "http://localhost:3000", "https://1xcrypto.net", "https://1xcrypto.net");
+$cors->whiteListheaders("Content-Type", "Authorization");
 
 // Handle CORS Requests
 $application->global($cors->createHandler());
 // JSON content parsing middleware.
 $application->global(BodyParser::json());
 
-$application->global(function(Request $req, Response $res){
-    $rawMoney = new stdClass();
-    $rawMoney->currency = "XOF";
-    $rawMoney->amount = 2000;
+$application->setOption('storage', $client);
+$application->setOption('redis', $redisClient);
 
-    $money = new Money();
-    $money->load($rawMoney);
+$application->global(function(Request $req, Response $res, Closure $next){
+    global $redisClient;
+    //Handle Service Authentication
+    $name = $req->headers['service-name'];
+    $signature = $req->headers['service-signature'];
 
-    var_dump($rawMoney);
-    var_dump($money);
+    if(isset($name) && isset($signature)){
+        $key = "{$name}.metadata";
+        $meta = $redisClient->get($key);
+        if(isset($meta)){
+            $rawMeta = json_decode($meta);
+            $decodedMeta = new ServiceAuth();
+            $decodedMeta->name = $rawMeta->name;
+            $decodedMeta->signature = $rawMeta->signature;
+            if($rawMeta->host !== null){
+                $decodedMeta->host = $rawMeta->host;
+            }
+            if(isset($rawMeta->port)){
+                $decodedMeta->port = $rawMeta->port;
+            }
+
+            if($decodedMeta->signature === $signature){
+                $req->setOption('peer', $decodedMeta);
+                $req->setOption('peerType', 'service');
+            }
+        }
+    }
 });
 
-//Inject PDO instance
-$application->global(function(Request& $request, Response& $response, Closure $next){
-    global $client;
-    $request->setOption('storage', $client);
-    $next();
-});
-// Inject Connected User informations
-/*$application->global(function(Request& $request, Response& $response, Closure $next){
-    if(isConnected()){
-        $request->setOption("connected", true);
-        $request->setOption("isAdmin", isUserAnAdmin());
-        $request->setOption("user", getUser());
+$application->global(function(Request& $req, Response $res, Closure $next){
+    if($req->getOption('peer') !== null){
+        return $next();
+    }    
+    $authorization = $req->headers['authorization'];
+    if(isset($authorization)){
+        $token = Utils::extractBearerToken($authorization);
+        if(isset($token)){
+            $issuer = new IssuerServiceClient();
+            $content = $issuer->decode($token);
+            if($content !== null){
+                if($content->type === "admin"){
+                    $admin = new AdminAuth();
+                    $admin->userId = $content->userId;
+                    $admin->firstName = $content->firstName;
+                    $admin->lastName = $content->lastName;
+                    $admin->roles = [];
+                    $adminClient = new SystemAdminProvider();
+                    $admin->roles = $adminClient->getAdminRoles($content->userId);
+                    $req->setOption('peer', $admin);
+                    $req->setOption('peerType', "admin");
+                }
+                else if($content->type === "user"){
+                    $user = new UserAuth();
+                    $user->userId = $content->userId;
+                    $user->firstName = $content->firstName;
+                    $user->lastName = $content->lastName;
+                    $req->setOption('peer', $user);
+                    $req->setOption('peerType', "user");
+                }
+            }
+        }
     }
-    else{
-        $request->setOption("connected", false);
-        $request->setOption('isAdmin', false);
-    }
-    $next();
+    return $next();
 });
 
-$application->get("/logout", function (Request $req, Response $res){
-    if($req->getOption('connected')){
-        logUserOut();
-    }
-    
-    $res->json([
-        'success' => true
-    ]);
-});*/
-
-/*includeDirectory("./routes");
+includeDirectory("./routes");
 
 $application->global(function (Request $req, Response $res){
     $res->json(['success' => false]);
 });
 
 $application->handle();
-*/
+
 ?>
