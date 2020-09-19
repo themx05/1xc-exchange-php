@@ -1,5 +1,3 @@
-## API REST du systeme 1xcrypto
+## 1xc-exchange-service
 
-### `Description`
-
-L'interface REST gere tous les appels des differents applications qui forment le systeme [1xcrypto](https://1xcrypto.net) tout entier
+Service d'echange de devises du systeme 1XC

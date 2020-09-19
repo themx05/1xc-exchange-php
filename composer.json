@@ -1,7 +1,7 @@
 {
-    "name": "1xc/api",
-    "version": "1.0.9",
-    "description": "1xc base REST API",
+    "name": "1xc/exchange-api",
+    "version": "1.1",
+    "description": "1xc exchange service",
     "authors": [
         {
             "name": "Maximilien Comlan",
