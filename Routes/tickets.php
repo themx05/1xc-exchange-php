@@ -9,9 +9,14 @@ use Core\TicketProvider;
 use Core\TransactionProvider;
 use Core\UserProvider;
 use Core\WalletProvider;
+use Events\EventCreators;
+use Models\AdminAuth;
 use Models\ExchangeRate;
 use Models\Method;
+use Models\Money;
+use Models\ServiceAuth;
 use Models\Ticket;
+use Models\UserAuth;
 use Models\WalletHistory;
 use Routing\Request;
 use Routing\Response;
@@ -32,11 +37,13 @@ $ticketRouter->global(function (Request $req, Response $res, Closure $next){
 $ticketRouter->get("/", function(Request $req, Response $res){
     $ticketProvider = new TicketProvider($req->getOption('storage'));
     $tickets = [];
-    if($req->getOption('isAdmin')){
+    $peer = $req->getOption("peer");
+
+    if( ($peer instanceof AdminAuth && $peer->hasRole("tickets:details:read")) || $peer instanceof ServiceAuth){
         $tickets = $ticketProvider->getTickets();
     }
-    else{
-        $tickets = $ticketProvider->getTicketsByUser($req->getOption('user')['id']);
+    else if($peer instanceof UserAuth){
+        $tickets = $ticketProvider->getTicketsByUser($peer->userId);
     }
 
     if(isset($tickets)){
@@ -46,11 +53,12 @@ $ticketRouter->get("/", function(Request $req, Response $res){
 });
 
 $ticketRouter->post("/",function (Request $req, Response $res){
-    global $logger;
+    global $logger, $eventPublisher;
     $data = $req->getOption('body');
     $logger->info("Data is ".json_encode($data));
     $client = $req->getOption('storage');
-    if($client instanceof PDO){
+    $peer = $req->getOption('peer');
+    if($client instanceof PDO && $peer instanceof UserAuth){
         $userProvider = new UserProvider($logger);
         $methodProvider = new MethodProvider($logger);
         $ticketProvider = new TicketProvider($client);
@@ -58,7 +66,7 @@ $ticketRouter->post("/",function (Request $req, Response $res){
         $walletProvider = new WalletProvider($logger);
         $client->beginTransaction();
         
-        $user = $userProvider->getProfileById($req->getOption('user')['id']);
+        $user = $userProvider->getProfileById($peer->userId);
 
         if(!isset($user)){
             $client->rollBack();
@@ -133,6 +141,11 @@ $ticketRouter->post("/",function (Request $req, Response $res){
                             if(isset($payment)){
                                 $logger->info("Expectation saved");
                                 $client->commit();
+
+                                $eventPublisher->publish(
+                                    EventCreators::eventTicketSubmitted($ticket)
+                                );
+
                                 return $res->json(Utils::buildSuccess([
                                     'ticketId' => $ticket_done,
                                     'approved' => $ticket->allowed,
@@ -168,7 +181,8 @@ $singleTicket = new Router();
 $singleTicket->get("/", function(Request $req, Response $res){
     $ticketProvider = new TicketProvider($req->getOption('storage'));
     $ticket = $ticketProvider->getTicketById($req->getParam('ticket'));
-    if( $ticket!== null && ($req->getOption('isAdmin') || $req->getOption('user')['id'] === $ticket->userId)){
+    $peer = $req->getOption('peer');
+    if( $ticket!== null && ($peer !== null && ( ($peer instanceof ServiceAuth) || ($peer instanceof AdminAuth && $peer->hasRole('ticket:details:read')) || ($peer instanceof UserAuth && $peer->userId === $ticket->userId)))){
         return $res->json(Utils::buildSuccess($ticket));
     }
     return $res->json(Utils::buildErrors());
@@ -176,7 +190,7 @@ $singleTicket->get("/", function(Request $req, Response $res){
 
 $singleTicket->middleware("/:action",function (Request $req, Response $res, Closure $next){
     $action = $req->getParam('action');
-    if($req->getOption('isAdmin')){
+    if($req->getOption('peerType') === "admin"){
         if(in_array($action, ["confirm","abort","allow","autopay","manual-pay"])){
             return $next();
         }
@@ -195,8 +209,10 @@ $singleTicket->middleware("/:action",function (Request $req, Response $res, Clos
 $singleTicket->get("/allow", function(Request $req, Response $res){
     $ticketProvider = new TicketProvider($req->getOption('storage'));
     $ticketId = $req->getParam('ticket');
-    $done = $ticketProvider->approveTicket($ticketId);
-    if($done){
+    $peer = $req->getOption("peer");
+
+    if( $peer instanceof AdminAuth && $peer->hasRole("ticket:status:approve")){
+        $done = $ticketProvider->approveTicket($ticketId);
         return $res->json(Utils::buildSuccess());
     }
     return $res->json(Utils::buildErrors());
@@ -205,74 +221,87 @@ $singleTicket->get("/allow", function(Request $req, Response $res){
 $singleTicket->get("/abort", function(Request $req, Response $res){
     $ticketProvider = new TicketProvider($req->getOption('storage'));
     $ticketId = $req->getParam('ticket');
-    $done = $ticketProvider->abortTicket($ticketId);
-    if($done){
+    $peer = $req->getOption('peer');
+    if($peer instanceof AdminAuth && $peer->hasRole("ticket:status:abort")){
+        $done = $ticketProvider->abortTicket($ticketId);
         return $res->json(Utils::buildSuccess());
     }
     return $res->json(Utils::buildErrors());
 });
 
 $singleTicket->get("/autopay", function(Request $req, Response $res){
-    global $logger;
-    $logger->info("Launching Automatic payment");
-    $ticketProvider = new TicketProvider($req->getOption('storage'));
-    $ticketId = $req->getParam('ticket');
-    $logger->info("Automatic payment launched for ticket ".$ticketId);
-    $ticket = $ticketProvider->getTicketById($ticketId);
+    global $logger, $eventPublisher;
+    $peer = $req->getOption('peer');
+    if($peer instanceof AdminAuth && $peer->hasRole("ticket:status:approve")){
+        $logger->info("Launching Automatic payment");
+        $ticketProvider = new TicketProvider($req->getOption('storage'));
+        $ticketId = $req->getParam('ticket'); 
+        $logger->info("Automatic payment launched for ticket ".$ticketId);
+        $ticket = $ticketProvider->getTicketById($ticketId);
 
-    if($ticket !== null && $ticket->isConfirmed() && $ticket->allowed){
-        $logger->info("There is a match for the given ticket. Launching Payment Gateway.");
-        $gateway = new PaymentGateway(
-            $ticket->getLabel(),
-            $ticket,
-            "",
-            $req->getOption('storage')
-        );
+        if($ticket !== null && $ticket->isConfirmed() && $ticket->allowed){
+            $logger->info("There is a match for the given ticket. Launching Payment Gateway.");
+            $gateway = new PaymentGateway(
+                $ticket->getLabel(),
+                $ticket,
+                "",
+                $req->getOption('storage')
+            );
 
-        $userProvider = new UserProvider($logger);
-        $customer = $userProvider->getProfileById($ticket->userId);
+            $userProvider = new UserProvider($logger);
+            $customer = $userProvider->getProfileById($ticket->userId);
 
-        $gateway->setCustomer($customer);
-        /// Bind Country to gateway
-        if($ticket->dest->getCountry() !== null){
-            $gateway->setCountry($ticket->dest->getCountry());
-        }
+            $gateway->setCustomer($customer);
+            /// Bind Country to gateway
+            if($ticket->dest->getCountry() !== null){
+                $gateway->setCountry($ticket->dest->getCountry());
+            }
 
-        $logger->info("Launching payout.");
-        $payment_result = $gateway->process();
+            $logger->info("Launching payout.");
+            $payment_result = $gateway->process();
 
-        if(isset($payment_result)){
-            $logger->info("Payment is done");
-            $pdo = $req->getOption('storage');
-            if($pdo instanceof PDO){
-                $pdo->beginTransaction();
-                $logger->info("Saving transaction");
-                $transactionProvider = new TransactionProvider($pdo);
-                $transactionId = $transactionProvider->createOutTicketTransaction($ticket, $payment_result);
-                if($ticket->enableCommission){
-                    $walletProvider = new WalletProvider($req->getOption('storage'));
-                    $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
-                    if($wallet !== null){
-                        $ticket_obj = json_decode(json_encode($ticket));
-                        $emitterBonus = $ticket->getEmitterCommission();
-                        $currency = $ticket->dest->getCurrency();
-                        $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Ticket {$ticket->id}", WalletHistory::TYPE_COMMISSION);
-                        if(empty($history)){
-                            $pdo->rollBack();
-                            return $res->json(Utils::buildErrors(["Failed to deposit commission"]));
+            if(isset($payment_result)){
+                $logger->info("Payment is done");
+                $pdo = $req->getOption('storage');
+                if($pdo instanceof PDO){
+                    $pdo->beginTransaction();
+                    $logger->info("Saving transaction");
+                    $transactionProvider = new TransactionProvider($pdo);
+                    $transactionId = $transactionProvider->createOutTicketTransaction($ticket, $payment_result);
+                    if($ticket->enableCommission){
+                        $walletProvider = new WalletProvider($logger);
+                        $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
+                        if($wallet !== null){
+                            $emitterBonus = $ticket->getEmitterCommission();
+                            $currency = $ticket->dest->getCurrency();
+
+                            $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Ticket {$ticket->id}", WalletHistory::TYPE_COMMISSION);
+                            if(empty($history)){
+                                $pdo->rollBack();
+                                return $res->json(Utils::buildErrors(["Failed to deposit commission"]));
+                            }
+
+                            $earn = new Money();
+                            $earn->amount = $emitterBonus;
+                            $earn->currency = $currency;
+
+                            $eventPublisher->publish(EventCreators::eventTicketCommissionPaid($ticket, $wallet, $earn, $history));
                         }
                     }
+                    if(!empty($transactionId)){
+                        $transaction = $transactionProvider->getTransactionById($transactionId);
+                        $eventPublisher->publish(EventCreators::eventTicketPaid($ticket, $transaction));
+
+                        $logger->info("Stored transaction");
+                        $pdo->commit();
+                        return $res->json(Utils::buildSuccess([
+                            'done' => $payment_result->isDone,
+                            'pending' => $payment_result->isPending
+                        ]));
+                    }
+                    $logger->info("Transaction not stored. Rolling back ");
+                    $pdo->rollBack();
                 }
-                if(!empty($transactionId)){
-                    $logger->info("Stored transaction");
-                    $pdo->commit();
-                    return $res->json(Utils::buildSuccess([
-                        'done' => $payment_result->isDone,
-                        'pending' => $payment_result->isPending
-                    ]));
-                }
-                $logger->info("Transaction not stored. Rolling back ");
-                $pdo->rollBack();
             }
         }
     }
@@ -281,7 +310,7 @@ $singleTicket->get("/autopay", function(Request $req, Response $res){
 });
 
 $singleTicket->post("/manual-pay", function(Request $req, Response $res){
-    global $logger;
+    global $logger, $eventPublisher;
     $data = $req->getOption('body');
     $ticketId = $req->getParam('ticket');
     $amount = floatval($data->amount);
@@ -303,49 +332,61 @@ $singleTicket->post("/manual-pay", function(Request $req, Response $res){
         return $res->json(Utils::buildErrors(['source' => 'You didn\'t specify the reference of the payment']));
     }
 
-    if($ticket !== null && $ticket->isConfirmed() && $ticket->allowed){
-        
-        $userProvider = new UserProvider($logger);
-        $customer = $userProvider->getProfileById($ticket->userId);
+    $peer = $req->getOption('peer');
+    if($peer instanceof AdminAuth && $peer->hasRole("ticket:status:approve")){
+        if($ticket !== null && $ticket->isConfirmed() && $ticket->allowed){
+            
+            $userProvider = new UserProvider($logger);
+            $customer = $userProvider->getProfileById($ticket->userId);
 
-        $payment_result = new ConfirmationData(
-            Utils::generateHash(),
-            $ticket->dest->type,
-            "",
-            $amount,
-            $ticket->dest->getCurrency(),
-            $source,
-            $ticket->address,
-            $reference,
-            time()
-        );
-        
-        $pdo = $req->getOption('storage');
-        if($pdo instanceof PDO){
-            $pdo->beginTransaction();
-            $transactionProvider = new TransactionProvider($pdo);
-            $transactionId = $transactionProvider->createOutTicketTransaction($ticket, $payment_result);
-            if($ticket->enableCommission){
-                $walletProvider = new WalletProvider($logger);
-                $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
-                if($wallet !== null){
-                    $emitterBonus = $ticket->getEmitterCommission();
-                    $currency = $ticket->dest->getCurrency();
-                    $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Ticket {$ticket->id}", WalletHistory::TYPE_COMMISSION);
-                    if(empty($history)){
-                        $pdo->rollBack();
-                        return $res->json(Utils::buildErrors(["Failed to deposit commission"]));
+            $payment_result = new ConfirmationData(
+                Utils::generateHash(),
+                $ticket->dest->type,
+                "",
+                $amount,
+                $ticket->dest->getCurrency(),
+                $source,
+                $ticket->address,
+                $reference,
+                time()
+            );
+            
+            $pdo = $req->getOption('storage');
+            if($pdo instanceof PDO){
+                $pdo->beginTransaction();
+                $transactionProvider = new TransactionProvider($pdo);
+                $transactionId = $transactionProvider->createOutTicketTransaction($ticket, $payment_result);
+                if($ticket->enableCommission){
+                    $walletProvider = new WalletProvider($logger);
+                    $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
+                    if($wallet !== null){
+                        $emitterBonus = $ticket->getEmitterCommission();
+                        $currency = $ticket->dest->getCurrency();
+                        $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Ticket {$ticket->id}", WalletHistory::TYPE_COMMISSION);
+                        if(empty($history)){
+                            $pdo->rollBack();
+                            return $res->json(Utils::buildErrors(["Failed to deposit commission"]));
+                        }
+
+                        $earn = new Money();
+                        $earn->amount = $emitterBonus;
+                        $earn->currency = $currency;
+                        $eventPublisher->publish(EventCreators::eventTicketCommissionPaid($ticket, $wallet, $earn, $history));
+
+                        $transaction = $transactionProvider->getTransactionById($transactionId);
+                        $eventPublisher->publish(EventCreators::eventTicketPaid($ticket, $transaction));
+
                     }
                 }
+                if(!empty($transactionId)){
+                    $pdo->commit();
+                    return $res->json(Utils::buildSuccess([
+                        'done' => $payment_result->isDone,
+                        'pending' => $payment_result->isPending
+                    ]));
+                }
+                $pdo->rollBack();
             }
-            if(!empty($transactionId)){
-                $pdo->commit();
-                return $res->json(Utils::buildSuccess([
-                    'done' => $payment_result->isDone,
-                    'pending' => $payment_result->isPending
-                ]));
-            }
-            $pdo->rollBack();
         }
     }
     return $res->json(Utils::buildErrors());

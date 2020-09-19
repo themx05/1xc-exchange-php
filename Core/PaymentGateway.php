@@ -121,7 +121,7 @@ class PaymentGateway {
 
     private function processInternal(){
         global $logger;
-        $provider = new WalletProvider($this->database);
+        $provider = new WalletProvider($logger);
         $result = $provider->deposit($this->to,$this->amount, $this->currency, $this->memo);
         if(isset($result) && !empty($result)){
             // Transfer to internal account is done.
@@ -145,7 +145,7 @@ class PaymentGateway {
 
     private function processCryptocurrency(){
         global $logger;
-        $methodAccountProvider = new MethodAccountProvider($this->database);
+        $methodAccountProvider = new MethodAccountProvider($logger);
         $coinbase_account = $methodAccountProvider->getCoinbase();
 
         $coinbaseUtils = new Coinbase($coinbase_account, $logger);
@@ -207,7 +207,8 @@ class PaymentGateway {
     }
 
     private function processPerfectMoney(){
-        $methodAccountProvider = new MethodAccountProvider($this->database);
+        global $logger;
+        $methodAccountProvider = new MethodAccountProvider($logger);
         $pm_account = $methodAccountProvider->getPerfectMoney();
         $pmAccount = new PerfectMoney($pm_account->accountId, $pm_account->passphrase);
         $balance = $pmAccount->getBalance($this->ticket->dest->detailsAsBanking()->account);
@@ -235,7 +236,7 @@ class PaymentGateway {
     private  function processFedaPayMobile(){
         global $logger;
         try{
-            $methodAccountProvider = new MethodAccountProvider($this->database);
+            $methodAccountProvider = new MethodAccountProvider($logger);
             $feda = $methodAccountProvider->getFedaPay();
 
             FedaPay::setEnvironment('live');

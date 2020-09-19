@@ -7,8 +7,12 @@ use Core\PaymentGateway;
 use Core\TicketProvider;
 use Core\TransactionProvider;
 use Core\UserProvider;
+use Core\WalletProvider;
+use Events\EventCreators;
+use Models\Money;
 use Models\Ticket;
 use Models\Transaction;
+use Models\WalletHistory;
 use Routing\Request;
 use Routing\Response;
 use Routing\Router;
@@ -16,42 +20,12 @@ use Utils\Coinbase\Coinbase;
 use Utils\Utils;
 
 $coinbaseWebHookRouter = new Router();
-/**
-FOR TESTING PURPOSES: Disabled in production.
-    $coinbaseWebHookRouter->get("/:account/:transaction", function(Request $req, Response $res){
-    global $logger;
-    $txId = $req->getParam("transaction");
-    $accountId  = $req->getParam("account");
-    $client = $req->getOption('storage');
-
-    $accountProvider = new MethodAccountProvider($client);
-    $coinbase_account = $accountProvider->getCoinbase();
-    $coinbaseUtils = new CoinbaseUtils($coinbase_account, $logger);
-    $account = $coinbaseUtils->getAccount($accountId);
-    $real_transaction = $coinbaseUtils->getTransaction($accountId, $txId);
-    $logger->info("Coinbase Account is ".json_encode($account));
-    $logger->info("Coinbase transaction is ".json_encode($real_transaction));
-    
-    return $res->json(['success' => true, 'transaction' => $real_transaction, 'account' => $account]);
-});
-
-$coinbaseWebHookRouter->get("/:tx", function(Request $req, Response $res){
-    global $logger;
-    $tx = $req->getParam('tx');
-    $client = $req->getOption('storage');
-    $accountProvider = new MethodAccountProvider($client);
-    $feda = $accountProvider->getFedaPay();
-    FedaPay::setEnvironment('live');
-    FedaPay::setApiKey($feda['details']['privateKey']);
-    $transaction = Transaction::retrieve($tx);
-    return $res->json($transaction);
-});*/
 
 /**
  * Next Step: Handle Deposits from internal account
  */
 $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
-    global $logger;
+    global $logger, $eventPublisher;
     $client = $req->getOption('storage');
     $event = $req->getOption('body');
 
@@ -112,6 +86,10 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
                     $logger->info("Saving incoming transaction");
                     $in_tx = $transactionProvider->createInTicketTransaction($ticket,$confirmationData);
                     if(!empty($in_tx)){
+
+                        $incoming = $transactionProvider->getTransactionById($in_tx);
+                        $eventPublisher->publish(EventCreators::eventTicketConfirmed($ticket, $incoming));
+
                         $gateway = new PaymentGateway(
                             $ticket->getLabel(),
                             $ticket,
@@ -131,9 +109,35 @@ $coinbaseWebHookRouter->post("/",function(Request $req, Response $res){
                             // Step 7 - 1
                             $logger->info("Processing payout");
                             $payment_result = $gateway->process();
+
                             if(isset($payment_result)){
                                 $logger->info("Payout processed");
                                 $out_tx = $transactionProvider->createOutTicketTransaction($ticket,$payment_result);
+                                if(!empty($out_tx)){
+                                    $outgoingTransaction = $transactionProvider->getTransactionById($out_tx);
+                                    if($ticket->enableCommission){
+                                        $logger->info("Commission should be deposed to merchant's business wallet");
+                                        $walletProvider = new WalletProvider($logger);
+                                        $wallet = $walletProvider->getBusinessWalletByUser($ticket->userId);
+                                        if($wallet !== null){
+                                            $emitterBonus = $ticket->getEmitterCommission();
+                                            $currency = $ticket->dest->getCurrency();
+                                            $history = $walletProvider->deposit($wallet->id, $emitterBonus, $currency ,"Commission {$ticket->getLabel()}", WalletHistory::TYPE_COMMISSION);
+                                            if(empty($history)){
+                                                $client->rollBack();
+                                                $logger->error("Failed to deposit commission");
+                                                return $res->json(Utils::buildErrors(["Echec de depot de la commission"]));
+                                            }
+
+                                            $earn = new Money();
+                                            $earn->amount = $emitterBonus;
+                                            $earn->currency = $currency;
+                                            $eventPublisher->publish(EventCreators::eventTicketCommissionPaid($ticket, $wallet, $earn, $history));
+                                        }
+                                    }
+                                    $eventPublisher->publish(EventCreators::eventTicketPaid($ticket, $outgoingTransaction));
+                                    $logger->info("Payout tansaction saved.");
+                                }
                             }
                         }
                         catch(Exception $e){

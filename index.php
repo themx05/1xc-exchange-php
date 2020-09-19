@@ -5,6 +5,7 @@ use Core\IssuerServiceClient;
 use Core\Logger;
 use Core\SystemAdminProvider;
 use Models\AdminAuth;
+use Models\Publisher;
 use Models\ServiceAuth;
 use Models\UserAuth;
 use Routing\App;
@@ -31,10 +32,14 @@ $key = "{$metadatas->name}.metadata";
 
 $redisClient->set($key, json_encode($metadatas));
 
+///Setup Event Publisher;
+
+$eventPublisher = new Publisher($redisClient, Config::redis()->eventChannel);
 
 $application = new App();
 
 $cors = new CorsConfiguration();
+
 $cors->whiteListBasicMethods();
 $cors->whiteListMethods('GET','POST','PUT','PATCH','DELETE');
 $cors->whiteListOrigin("localhost", "http://localhost", "http://localhost:3000", "https://1xcrypto.net", "https://1xcrypto.net");
@@ -72,6 +77,7 @@ $application->global(function(Request $req, Response $res, Closure $next){
             if($decodedMeta->signature === $signature){
                 $req->setOption('peer', $decodedMeta);
                 $req->setOption('peerType', 'service');
+                $req->setOption('connected', true);
             }
         }
     }
@@ -98,6 +104,7 @@ $application->global(function(Request& $req, Response $res, Closure $next){
                     $admin->roles = $adminClient->getAdminRoles($content->userId);
                     $req->setOption('peer', $admin);
                     $req->setOption('peerType', "admin");
+                    $req->setOption('connected', true);
                 }
                 else if($content->type === "user"){
                     $user = new UserAuth();
@@ -106,6 +113,7 @@ $application->global(function(Request& $req, Response $res, Closure $next){
                     $user->lastName = $content->lastName;
                     $req->setOption('peer', $user);
                     $req->setOption('peerType', "user");
+                    $req->setOption('connected', true);
                 }
             }
         }

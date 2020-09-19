@@ -8,7 +8,9 @@ use Core\TransactionProvider;
 use Core\UserProvider;
 use Core\Utils;
 use Core\WalletProvider;
+use Events\EventCreators;
 use Models\Method;
+use Models\Money;
 use Models\WalletHistory;
 use Routing\Request;
 use Routing\Response;
@@ -18,7 +20,7 @@ use Utils\Utils as UtilsUtils;
 $paymentRouter = new Router();
 
 $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req, Response $res){
-    global $logger;
+    global $logger, $eventPublisher;
     $method = $req->getParam('method');
     $paymentId = $req->getParam('paymentId');
 
@@ -129,7 +131,11 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                             $in_tx = $transactionProvider->createInTicketTransaction($ticket,$confirmation_data);
     
                             if(!empty($in_tx)){
+                                $incomingTransaction = $transactionProvider->getTransactionById($in_tx);
+
                                 $logger->info("Income saved in transactions. ID: $in_tx");
+                                $eventPublisher->publish(EventCreators::eventTicketConfirmed($ticket, $incomingTransaction));
+
                                 //Step 7 - What if there was no account stored and available to handle this transfer ?
                                 $gateway = new PaymentGateway(
                                     $ticket->getLabel(),
@@ -149,6 +155,7 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                                     $logger->info("Saving payout transaction.");
                                     $out_tx = $transactionProvider->createOutTicketTransaction($ticket, $result);
                                     if(!empty($out_tx)){
+                                        $outgoingTransaction = $transactionProvider->getTransactionById($out_tx);
                                         if($ticket->enableCommission){
                                             $logger->info("Commission should be deposed to merchant's business wallet");
                                             $walletProvider = new WalletProvider($logger);
@@ -162,8 +169,14 @@ $paymentRouter->middleware("/confirm/:method/:paymentId", function(Request $req,
                                                     $logger->error("Failed to deposit commission");
                                                     return $res->json(UtilsUtils::buildErrors(["Echec de depot de la commission"]));
                                                 }
+
+                                                $earn = new Money();
+                                                $earn->amount = $emitterBonus;
+                                                $earn->currency = $currency;
+                                                $eventPublisher->publish(EventCreators::eventTicketCommissionPaid($ticket, $wallet, $earn, $history));
                                             }
                                         }
+                                        $eventPublisher->publish(EventCreators::eventTicketPaid($ticket, $outgoingTransaction));
                                         $logger->info("Payout tansaction saved.");
                                     }
                                 }
