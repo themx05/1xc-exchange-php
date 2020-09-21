@@ -51,7 +51,7 @@ class IssuerServiceClient extends ServiceClient{
             $headers = [
                 'Service-Name' => $meta->name,
                 'Service-Signature' => $meta->signature,
-            ]; 
+            ];
 
             $request = new Request("POST", $url, $headers, json_encode($data));
 

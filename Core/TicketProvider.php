@@ -19,7 +19,7 @@ class TicketProvider{
         $ticket['id'] = Utils::generateHash();
         $ticket['rate'] = doubleval($ticket['rate']);
         $ticket['amount'] = doubleval($ticket['amount']);
-        $ticket['emittedAt'] = time();
+        $ticket['emittedAt'] = time()*1000; // moving from seconds to milliseconds;
 
         if($stmt->execute([
             $ticket['id'],

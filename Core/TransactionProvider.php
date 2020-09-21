@@ -41,7 +41,7 @@ class TransactionProvider{
             'currency' => $payment->units,
             'source' => $payment->source,
             'dest' => $payment->dest,
-            'insertionDate' => time(),
+            'insertionDate' => time()*1000, /// moved from seconds to milliseconds,
             'status' => Transaction::STATUS_PENDING
         ];
 

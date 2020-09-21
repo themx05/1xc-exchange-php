@@ -92,5 +92,4 @@ class MethodAccountProvider extends ServiceClient{
         return null;
     }
 }
-
 ?>

@@ -2,19 +2,19 @@
 
 namespace Core;
 
+use Predis\Client;
 use Psr\Log\AbstractLogger;
 use Psr\Log\InvalidArgumentException as InvalidArgumentException;
 use Psr\Log\LogLevel;
+use Utils\Config;
 
 class Logger extends AbstractLogger{
-    public $log_file;
+    public Client $redisClient;
+    public string $channel;
 
-    public function __construct(string $file_path){
-        if(!file_exists($file_path)){
-            $file  = fopen($file_path,"a");
-            fclose($file);
-        }
-        $this->log_file = $file_path;
+    public function __construct(Client $client, string $channel){
+        $this->redisClient = $client;
+        $this->channel = $channel;
     }
 
     public function log($level, $message, array $context = array()){
@@ -37,8 +37,13 @@ class Logger extends AbstractLogger{
 
     private function writeToFile(string $level, string $message){
         $date = date('d-M-Y H:i:s');
-        $full = "[$date][$level]: $message".PHP_EOL;
-        file_put_contents($this->log_file, $full, FILE_APPEND);
+        $to_log = [
+            'service' => Config::metadata()->name,
+            'logLevel' => $level,
+            'timestamp' => $date,
+            'message' => $message
+        ];
+        $this->redisClient->publish($this->channel, json_encode($to_log));
     }
 
     public function interpolate(string $message, array $context = array()){

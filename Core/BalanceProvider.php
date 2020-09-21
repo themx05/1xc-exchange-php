@@ -4,9 +4,7 @@
  */
 namespace Core;
 
-use CoinbaseUtils;
 use Models\Method;
-use PDO;
 use Utils\Coinbase\Coinbase;
 
 class BalanceProvider extends ServiceClient{

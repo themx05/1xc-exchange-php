@@ -22,10 +22,10 @@ $_SERVER['REQUEST_URI'] = "/".$_GET['route'];
 
 session_start();
 
-$logger = new Logger(__DIR__."/error_log");
-
 $client = Utils::getDatabaseInstance();
 $redisClient = new Predis\Client();
+
+$logger = new Logger($redisClient, Config::redis()->loggingChannel);
 
 $metadatas = Config::metadata();
 $key = "{$metadatas->name}.metadata";
