@@ -11,7 +11,12 @@ class EventCreators{
     static function eventTicketSubmitted(Ticket $ticket){
         return [
             'type' => TicketEvent::EVENT_TICKET_SUBMITTED,
-            'payload' => $ticket,
+            'payload' => [
+                'document' => [
+                    'id' =>  $ticket->id,
+                    'data' => $ticket
+                ]
+            ],
             'timestamp' => time()*1000
         ];
     }
@@ -31,8 +36,14 @@ class EventCreators{
         return [
             'type' => TicketEvent::EVENT_TICKET_CONFIRMED,
             'payload' => [
-                'ticket' => $ticket,
-                'transaction' => $transaction
+                'ticket' => [
+                    'id' =>  $ticket->id,
+                    'data' => $ticket
+                ],
+                'transaction' => [
+                    'id' => $transaction->id,
+                    'data' => $transaction
+                ]
             ],
             'timestamp' => time()*1000
         ];
@@ -42,7 +53,10 @@ class EventCreators{
         return [
             'type' => TicketEvent::EVENT_TICKET_COMMISSION_PAID,
             'payload' => [
-                'ticket' => $ticket,
+                'ticket' => [
+                    'id' =>  $ticket->id,
+                    'data' => $ticket
+                ],
                 'wallet' => $wallet->id,
                 'amount' => $amount,
                 'history' => $history
@@ -55,7 +69,10 @@ class EventCreators{
         return [
             'type' => TicketEvent::EVENT_TICKET_PAID,
             'payload' => [
-                'ticket' => $ticket,
+                'ticket' => [
+                    'id' =>  $ticket->id,
+                    'data' => $ticket
+                ],
                 'amount' => $amount
             ],
             'timestamp' => time()*1000
