@@ -56,8 +56,8 @@ $application->setOption('redis', $redisClient);
 $application->global(function(Request $req, Response $res, Closure $next){
     global $redisClient;
     //Handle Service Authentication
-    $name = $req->headers['service-name'];
-    $signature = $req->headers['service-signature'];
+    $name = isset($req->headers['service-name']) ? $req->headers['service-name'] : "";
+    $signature = isset($req->headers['service-signature']) ? $req->headers['service-signature'] : "";
 
     if(isset($name) && isset($signature)){
         $key = "{$name}.metadata";
