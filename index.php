@@ -81,6 +81,8 @@ $application->global(function(Request $req, Response $res, Closure $next){
             }
         }
     }
+
+    $next();
 });
 
 $application->global(function(Request& $req, Response $res, Closure $next){
@@ -105,6 +107,7 @@ $application->global(function(Request& $req, Response $res, Closure $next){
                     $req->setOption('peer', $admin);
                     $req->setOption('peerType', "admin");
                     $req->setOption('connected', true);
+                    return $next();
                 }
                 else if($content->type === "user"){
                     $user = new UserAuth();
@@ -114,11 +117,13 @@ $application->global(function(Request& $req, Response $res, Closure $next){
                     $req->setOption('peer', $user);
                     $req->setOption('peerType', "user");
                     $req->setOption('connected', true);
+                    return $next();
                 }
             }
         }
     }
-    return $next();
+
+    return $res->status(403)->json(Utils::buildErrors());
 });
 
 includeDirectory("./Routes");
