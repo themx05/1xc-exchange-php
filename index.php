@@ -121,7 +121,7 @@ $application->global(function(Request& $req, Response $res, Closure $next){
     return $next();
 });
 
-includeDirectory("./routes");
+includeDirectory("./Routes");
 
 $application->global(function (Request $req, Response $res){
     $res->json(['success' => false]);
