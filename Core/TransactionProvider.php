@@ -7,12 +7,17 @@ use Models\Transaction;
 use PDO;
 use Utils\Utils;
 
-class TransactionProvider{
-    public $client;
+class TransactionProvider extends Provider{
 
-    public function __construct(PDO $client){
-        $this->client = $client;
-    }
+    public function getCreationScript(): array{
+        return [
+            'CREATE TABLE IF NOT EXISTS Transactions(
+                id varchar(255) not null,
+                data JSON NOT NULL,
+                primary key(id)
+            );'
+        ];
+    }    
 
     public function createInTicketTransaction(Ticket $ticket, ConfirmationData $payment){
         return $this->createTicketTransaction($ticket, Transaction::VARIANT_IN, $payment);

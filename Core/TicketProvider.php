@@ -6,11 +6,16 @@ use Models\Ticket;
 use PDO;
 use Utils\Utils;
 
-class TicketProvider{
-    public $client;
+class TicketProvider extends Provider{
 
-    public function __construct(PDO $client){
-        $this->client = $client;
+    public function getCreationScript(): array{
+        return [
+            'CREATE TABLE IF NOT EXISTS Tickets(
+                id VARCHAR(255) NOT NULL,
+                data JSON NOT NULL,
+                primary key(id)
+            );'
+        ];
     }
 
     public function createTicket(array $ticket){

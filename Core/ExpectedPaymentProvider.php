@@ -12,6 +12,16 @@ use Utils\Utils;
 
 class ExpectedPaymentProvider extends Provider{
 
+    public function getCreationScript(): array{
+        return [
+            'CREATE TABLE IF NOT EXISTS ExpectedPayments(
+                id VARCHAR(255) NOT NULL,
+                data JSON NOT NULL,
+                primary key(id)
+            );'
+        ];
+    }
+
     public function getExpectedPaymentByTicketId(string $id){
         $expectation_query = "`SELECT data FROM ExpectedPayments WHERE JSON_EXTRACT(data,'$.ticketId') = '$id'`";
         $expectation_stmt = $this->client->query($expectation_query);

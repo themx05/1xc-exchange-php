@@ -1,9 +1,3 @@
-DROP TABLE IF EXISTS SystemProps;
-CREATE TABLE SystemProps(
-    id varchar(255) not null,
-    data JSON not null,
-    primary key(`id`)
-);
 
 DROP TABLE IF EXISTS Users;
 
