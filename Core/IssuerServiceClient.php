@@ -20,6 +20,7 @@ class IssuerServiceClient extends ServiceClient{
             $headers = [
                 'Service-Name' => $meta->name,
                 'Service-Signature' => $meta->signature,
+                'Content-Type' => 'application/json;charset=utf-8'
             ]; 
             $req_body = [
                 'token' => $token
@@ -51,6 +52,7 @@ class IssuerServiceClient extends ServiceClient{
             $headers = [
                 'Service-Name' => $meta->name,
                 'Service-Signature' => $meta->signature,
+                'Content-Type' => 'application/json;charset=utf-8'
             ];
 
             $request = new Request("POST", $url, $headers, json_encode($data));

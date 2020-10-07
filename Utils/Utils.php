@@ -96,7 +96,7 @@ class Utils{
 
     static function extractBearerToken(string $str): string{
         $matches = [];
-        preg_match("^bearer\\s+(?<token>.*/i)", $str, $matches);
+        preg_match("^(bearer)\s+(?<token>.*)$/i", $str, $matches);
         if(isset($matches['token'])){
             return $matches['token'];
         }
