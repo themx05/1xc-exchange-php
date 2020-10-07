@@ -24,7 +24,7 @@ Class Utils{
             $v2_hash = $_POST['V2_HASH'];
             $paymentId = UtilsUtils::protectString($_POST['PAYMENT_ID']);
             
-            $methodAccountProvider = new MethodAccountProvider($client);
+            $methodAccountProvider = new MethodAccountProvider();
             $pm_account = $methodAccountProvider->getPerfectMoney(Method::TYPE_PERFECTMONEY);
 
             if($pm_account != null){
@@ -65,7 +65,7 @@ Class Utils{
         $provider = new ExpectedPaymentProvider($client);
         $expected_payment = $provider->getExpectedPaymentById($paymentId);
         if($expected_payment !== null && $expected_payment instanceof ExpectedPayment){
-            $methodAccountProvider = new MethodAccountProvider($client);
+            $methodAccountProvider = new MethodAccountProvider();
             $feda = $methodAccountProvider->getFedaPay();
     
             FedaPay::setEnvironment('live');

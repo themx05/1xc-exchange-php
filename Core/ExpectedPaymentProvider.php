@@ -60,7 +60,7 @@ class ExpectedPaymentProvider extends Provider{
         $source = $ticket->source;
         $source_currency = PaymentGateway::getCurrencyFromMethod(json_decode(json_encode($source)));
 
-        $methodAccountProvider = new MethodAccountProvider($this->client);
+        $methodAccountProvider = new MethodAccountProvider();
         if($source['category'] === "cryptocurrency"){
 
             /**
