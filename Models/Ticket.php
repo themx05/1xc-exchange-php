@@ -27,6 +27,12 @@ class Ticket{
     public const STATUS_CANCELLED = "cancelled";
     public const STATUS_PAID = "paid";
 
+    public function __construct()
+    {
+        $this->source = new Method();
+        $this->dest = new Method();
+    }
+
     public function isPending(){
         return $this->status === static::STATUS_PENDING;
     }

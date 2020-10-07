@@ -26,6 +26,11 @@ class Method{
     public const TYPE_MOOV = "moovmoney";
     public const TYPE_INTERNAL = "internal";
 
+    public function __construct()
+    {
+        $this->details = new stdClass();
+    }
+
     public function detailsAsBanking(){
         return new BankingDetails($this->details);
     }

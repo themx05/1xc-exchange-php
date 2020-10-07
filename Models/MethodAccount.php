@@ -11,6 +11,11 @@ class MethodAccount{
     public const TYPE_COINBASE = "coinbase";
     public const TYPE_FEDAPAY = "fedapay";
 
+    public function __construct()
+    {
+        $this->details = new stdClass();
+    }
+
     public function detailsAsPerfectMoney(){
         return new PerfectmoneyAccount($this->details);
     }

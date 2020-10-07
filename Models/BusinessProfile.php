@@ -17,5 +17,10 @@ class BusinessProfile{
 
     public const STATUS_PENDING = "pending";
     public const STATUS_VERIFIED = "verified";
+
+    public function __construct()
+    {
+        $this->documents = [];
+    }
 }
 ?>
