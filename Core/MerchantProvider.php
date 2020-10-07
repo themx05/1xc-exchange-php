@@ -27,7 +27,8 @@ class MerchantProvider extends ServiceClient{
             $response = $guzzle->send($request);
             $body = json_decode($response->getBody()->__toString());
             if($body->success){
-                $profile = new BusinessProfile($body->data);
+                $profile = new BusinessProfile();
+                $profile->load($body->data);
                 return $profile;
             }
             return null;

@@ -24,7 +24,8 @@ class ConversionService{
             $response = $guzzle->send($request);
             $body = json_decode($response->getBody()->__toString());
             if($body->success){
-                $rate = new ExchangeRate($body->data);
+                $rate = new ExchangeRate();
+                $rate->load($body->data);
                 return $rate;
             }
             return null;

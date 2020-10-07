@@ -52,7 +52,8 @@ class WalletProvider extends ServiceClient{
             $response = $guzzle->send($request);
             $body = json_decode($response->getBody()->__toString());
             if($body->success && isset($body->data[0])){
-                $profile = new Wallet($body->data[0]);
+                $profile = new Wallet();
+                $profile->load($body->data[0]);
                 return $profile;
             }
             return null;
@@ -82,7 +83,8 @@ class WalletProvider extends ServiceClient{
             $response = $guzzle->send($request);
             $body = json_decode($response->getBody()->__toString());
             if($body->success && isset($body->data[0])){
-                $profile = new Wallet($body->data[0]);
+                $profile = new Wallet();
+                $profile->load($body->data[0]);
                 return $profile;
             }
             return null;

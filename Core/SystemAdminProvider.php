@@ -26,7 +26,8 @@ class SystemAdminProvider extends ServiceClient{
             $response = $guzzle->send($request);
             $body = json_decode($response->getBody()->__toString());
             if($body->success){
-                $profile = new SystemAdmin($body->data);
+                $profile = new SystemAdmin();
+                $profile->load($body->data);
                 return $profile;
             }
             return null;

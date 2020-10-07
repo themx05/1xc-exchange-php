@@ -27,7 +27,8 @@ class MethodAccountProvider extends ServiceClient{
             $response = $guzzle->send($request);
             $body = json_decode($response->getBody()->__toString());
             if($body->success){
-                $account = new MethodAccount($body->data);
+                $account = new MethodAccount();
+                $account->load($body->data);
                 return $account;
             }
             return null;
@@ -55,7 +56,8 @@ class MethodAccountProvider extends ServiceClient{
             $response = $guzzle->send($request);
             $body = json_decode($response->getBody()->__toString());
             if($body->success && isset($body->data[0])){
-                $account = new MethodAccount($body->data[0]);
+                $account = new MethodAccount();
+                $account->load($body->data[0]);
                 return $account;
             }
             return null;
