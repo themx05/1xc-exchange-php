@@ -100,6 +100,6 @@ class Utils{
         if(isset($matches['token'])){
             return $matches['token'];
         }
-        return "";
+        return null;
     }
 }

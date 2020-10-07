@@ -40,24 +40,27 @@ $application = new App();
 
 $cors = new CorsConfiguration();
 
-$cors->whiteListBasicMethods();
+/*$cors->whiteListBasicMethods();
 $cors->whiteListMethods('GET','POST','PUT','PATCH','DELETE');
 $cors->whiteListOrigin("localhost", "http://localhost", "http://localhost:3000", "https://1xcrypto.net", "https://1xcrypto.net");
 $cors->whiteListheaders("Content-Type", "Authorization");
 
 // Handle CORS Requests
 $application->global($cors->createHandler());
+*/
+
 // JSON content parsing middleware.
 $application->global(BodyParser::json());
 
 $application->setOption('storage', $client);
 $application->setOption('redis', $redisClient);
+$application->setOption('connected', false);
 
 $application->global(function(Request $req, Response $res, Closure $next){
     global $redisClient;
     //Handle Service Authentication
-    $name = isset($req->headers['service-name']) ? $req->headers['service-name'] : "";
-    $signature = isset($req->headers['service-signature']) ? $req->headers['service-signature'] : "";
+    $name = isset($req->headers['service-name']) ? $req->headers['service-name'] : null;
+    $signature = isset($req->headers['service-signature']) ? $req->headers['service-signature'] : null;
 
     if(isset($name) && isset($signature)){
         $key = "{$name}.metadata";
@@ -89,7 +92,7 @@ $application->global(function(Request& $req, Response $res, Closure $next){
     if($req->getOption('peer') !== null){
         return $next();
     }    
-    $authorization = $req->headers['authorization'];
+    $authorization = isset($req->headers['authorization']) ? $req->headers['authorization'] : null;
     if(isset($authorization)){
         $token = Utils::extractBearerToken($authorization);
         if(isset($token)){
