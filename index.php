@@ -89,7 +89,7 @@ $application->global(function(Request $req, Response $res, Closure $next){
 });
 
 $application->global(function(Request& $req, Response $res, Closure $next){
-    if($req->getOption('peer') !== null){
+    if($req->getOption('connected')){
         return $next();
     }    
     $authorization = isset($req->headers['authorization']) ? $req->headers['authorization'] : null;
